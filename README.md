@@ -19,6 +19,7 @@ Current capabilities:
 - Plugin system (Extension Points + PluginManager)
 - Project View (file tree based on VFS)
 - File save from Editor (Ctrl/Cmd+S + button)
+- Editor tabs (multiple open files)
 
 ## Tech Stack
 
@@ -71,9 +72,10 @@ We follow IntelliJ Platform inspired coding standards:
 5. ✅ Plugin system (Extension Points + PluginManager)
 6. ✅ Project View (file tree)
 7. ✅ File save (VFS write + Ctrl/Cmd+S)
-8. Language support (Kotlin / Java)
-9. Debugger integration
-10. ...
+8. ✅ Editor tabs
+9. Language support (Kotlin / Java)
+10. Debugger integration
+11. ...
 
 ## Contributing
 

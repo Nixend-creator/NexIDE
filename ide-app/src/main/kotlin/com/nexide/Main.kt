@@ -16,25 +16,29 @@
 
 package com.nexide
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.nexide.platform.core.Application
-import com.nexide.platform.core.vfs.LocalFileSystem
 import com.nexide.platform.core.vfs.VirtualFile
 import com.nexide.platform.editor.Editor
 import com.nexide.platform.editor.ui.EditorView
@@ -42,6 +46,7 @@ import com.nexide.platform.plugin.PluginManager
 import com.nexide.platform.plugin.example.CoreFileTypesPlugin
 import com.nexide.platform.plugin.example.FILE_TYPE_EP
 import com.nexide.platform.ui.projectview.ProjectView
+import com.nexide.platform.ui.tabs.EditorTabs
 import com.nexide.platform.util.Logger
 import java.io.File
 
@@ -50,10 +55,8 @@ fun main() {
   val application = Application.create()
   application.start()
 
-  // Load built-in plugins
   val pluginManager = PluginManager.getInstance()
   pluginManager.loadPlugin(CoreFileTypesPlugin())
-
   Logger.info("Registered file types: ${FILE_TYPE_EP.extensionList.map { it.name }}")
 
   application {
@@ -74,9 +77,7 @@ fun main() {
 
 @Composable
 fun NexIdeApp(application: Application) {
-  // Open the NexIDE project itself as a demo project
   val projectRootPath = remember {
-    // Try to find the project root (works when run from the repo)
     val candidates = listOf(
       File(".").absoluteFile,
       File("..").absoluteFile,
@@ -87,25 +88,43 @@ fun NexIdeApp(application: Application) {
     }?.absolutePath ?: File(".").absolutePath
   }
 
-  val project = remember {
-    application.openProject(projectRootPath)
-  }
-
+  val project = remember { application.openProject(projectRootPath) }
   val rootVirtualFile = project.baseDir
 
+  val openEditors = remember { mutableStateListOf<Editor>() }
+  var activeEditor by remember { mutableStateOf<Editor?>(null) }
   var selectedFile by remember { mutableStateOf<VirtualFile?>(null) }
-  var currentEditor by remember { mutableStateOf<Editor?>(null) }
 
   fun openFile(file: VirtualFile) {
     selectedFile = file
-    currentEditor = Editor.create(file)
-    Logger.info("Opened in editor: ${file.path}")
+    val existing = openEditors.firstOrNull { it.file.path == file.path }
+    if (existing != null) {
+      activeEditor = existing
+      return
+    }
+    val editor = Editor.create(file)
+    openEditors.add(editor)
+    activeEditor = editor
+    Logger.info("Opened tab: ${file.path}")
+  }
+
+  fun closeEditor(editor: Editor) {
+    val index = openEditors.indexOf(editor)
+    openEditors.remove(editor)
+    editor.dispose()
+    if (activeEditor === editor) {
+      activeEditor = when {
+        openEditors.isEmpty() -> null
+        index < openEditors.size -> openEditors[index]
+        else -> openEditors.lastOrNull()
+      }
+      selectedFile = activeEditor?.file
+    }
   }
 
   MaterialTheme {
     Surface(modifier = Modifier.fillMaxSize()) {
       Row(modifier = Modifier.fillMaxSize()) {
-        // Left: Project View
         ProjectView(
           root = rootVirtualFile,
           selectedFile = selectedFile,
@@ -117,28 +136,34 @@ fun NexIdeApp(application: Application) {
 
         VerticalDivider()
 
-        // Right: Editor
-        val editor = currentEditor
-        if (editor != null) {
-          EditorView(
-            editor = editor,
-            modifier = Modifier
-              .weight(1f)
-              .fillMaxHeight()
+        Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+          EditorTabs(
+            editors = openEditors.toList(),
+            activeEditor = activeEditor,
+            onSelect = {
+              activeEditor = it
+              selectedFile = it.file
+            },
+            onClose = { closeEditor(it) }
           )
-        } else {
-          // Empty state
-          androidx.compose.foundation.layout.Box(
-            modifier = Modifier
-              .weight(1f)
-              .fillMaxHeight(),
-            contentAlignment = androidx.compose.ui.Alignment.Center
-          ) {
-            androidx.compose.material3.Text(
-              text = "Select a file in the Project View",
-              style = MaterialTheme.typography.bodyLarge,
-              color = MaterialTheme.colorScheme.onSurfaceVariant
+
+          val editor = activeEditor
+          if (editor != null) {
+            EditorView(
+              editor = editor,
+              modifier = Modifier.weight(1f).fillMaxSize()
             )
+          } else {
+            Box(
+              modifier = Modifier.weight(1f).fillMaxSize(),
+              contentAlignment = Alignment.Center
+            ) {
+              Text(
+                text = "Select a file in the Project View",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+              )
+            }
           }
         }
       }
