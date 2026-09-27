@@ -16,6 +16,9 @@
 
 package com.nexide.platform.core
 
+import com.nexide.platform.core.vfs.LocalFileSystem
+import com.nexide.platform.core.vfs.VirtualFile
+
 /**
  * Represents an open project in NexIDE.
  * Analogous to com.intellij.openapi.project.Project.
@@ -25,12 +28,17 @@ class Project(
 ) {
   private var myName: String = basePath.substringAfterLast('/').ifEmpty { "Untitled" }
   private var myIsDisposed = false
+  private val myBaseDir: VirtualFile? = LocalFileSystem.getInstance().findFileByPath(basePath)
 
   val name: String
     get() = myName
 
   val isDisposed: Boolean
     get() = myIsDisposed
+
+  /** Root directory of the project as a VirtualFile, or null if path is invalid. */
+  val baseDir: VirtualFile?
+    get() = myBaseDir
 
   fun setName(name: String) {
     myName = name
