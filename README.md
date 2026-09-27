@@ -20,6 +20,7 @@ Current capabilities:
 - Project View (file tree based on VFS)
 - File save from Editor (Ctrl/Cmd+S + button)
 - Editor tabs (multiple open files)
+- Line numbers in editor
 
 ## Tech Stack
 
@@ -73,9 +74,10 @@ We follow IntelliJ Platform inspired coding standards:
 6. ✅ Project View (file tree)
 7. ✅ File save (VFS write + Ctrl/Cmd+S)
 8. ✅ Editor tabs
-9. Language support (Kotlin / Java)
-10. Debugger integration
-11. ...
+9. ✅ Line numbers in editor
+10. Language support (Kotlin / Java)
+11. Debugger integration
+12. ...
 
 ## Contributing
 

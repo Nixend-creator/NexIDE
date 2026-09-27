@@ -21,11 +21,15 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -47,13 +51,17 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nexide.platform.editor.Editor
 
+private val EDITOR_FONT_SIZE = 14.sp
+private val EDITOR_LINE_HEIGHT = 20.sp
+
 /**
  * Basic text editor view backed by an [Editor] instance.
- * Supports Ctrl+S / Cmd+S to save.
+ * Supports Ctrl+S / Cmd+S to save and shows line numbers.
  */
 @Composable
 fun EditorView(
@@ -62,7 +70,6 @@ fun EditorView(
 ) {
   var text by remember(editor) { mutableStateOf(editor.document.getText()) }
   var statusMessage by remember { mutableStateOf<String?>(null) }
-  // Force recomposition when modified flag changes
   var modifiedTick by remember { mutableStateOf(0) }
 
   fun performSave() {
@@ -77,6 +84,29 @@ fun EditorView(
     statusMessage = null
     modifiedTick++
   }
+
+  val lineCount = remember(text) {
+    if (text.isEmpty()) 1 else text.count { it == '\n' } + 1
+  }
+  val lineNumberWidth = remember(lineCount) {
+    val digits = lineCount.toString().length.coerceAtLeast(2)
+    (digits * 10 + 16).dp
+  }
+
+  val scrollState = rememberScrollState()
+  val textStyle = TextStyle(
+    fontFamily = FontFamily.Monospace,
+    fontSize = EDITOR_FONT_SIZE,
+    color = MaterialTheme.colorScheme.onSurface,
+    lineHeight = EDITOR_LINE_HEIGHT
+  )
+  val gutterStyle = TextStyle(
+    fontFamily = FontFamily.Monospace,
+    fontSize = EDITOR_FONT_SIZE,
+    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+    lineHeight = EDITOR_LINE_HEIGHT,
+    textAlign = TextAlign.End
+  )
 
   Column(
     modifier = modifier
@@ -101,7 +131,6 @@ fun EditorView(
         .padding(horizontal = 12.dp, vertical = 4.dp),
       verticalAlignment = Alignment.CenterVertically
     ) {
-      // Force read of modifiedTick so Compose tracks it
       @Suppress("UNUSED_EXPRESSION")
       modifiedTick
 
@@ -110,6 +139,8 @@ fun EditorView(
         if (editor.isModified) append(" *")
         append("  |  ")
         append("${editor.document.textLength} chars")
+        append("  |  ")
+        append("$lineCount lines")
         statusMessage?.let {
           append("  |  ")
           append(it)
@@ -131,36 +162,51 @@ fun EditorView(
       }
     }
 
-    // Editor area
-    BasicTextField(
-      value = text,
-      onValueChange = onTextChange,
+    // Editor area: gutter + text
+    Row(
       modifier = Modifier
         .fillMaxSize()
         .background(MaterialTheme.colorScheme.surface)
-        .padding(12.dp),
-      textStyle = TextStyle(
-        fontFamily = FontFamily.Monospace,
-        fontSize = 14.sp,
-        color = MaterialTheme.colorScheme.onSurface,
-        lineHeight = 20.sp
-      ),
-      cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-      decorationBox = { innerTextField ->
-        Box(modifier = Modifier.fillMaxSize()) {
-          if (text.isEmpty()) {
-            Text(
-              text = "// Start typing...",
-              style = TextStyle(
-                fontFamily = FontFamily.Monospace,
-                fontSize = 14.sp,
-                color = Color.Gray
-              )
-            )
-          }
-          innerTextField()
-        }
+    ) {
+      // Line numbers gutter
+      Box(
+        modifier = Modifier
+          .widthIn(min = lineNumberWidth)
+          .fillMaxHeight()
+          .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+          .verticalScroll(scrollState)
+          .padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)
+      ) {
+        val numbers = (1..lineCount).joinToString("\n")
+        Text(
+          text = numbers,
+          style = gutterStyle
+        )
       }
-    )
+
+      // Text field (shares scroll with gutter via same scrollState — limited sync for MVP)
+      BasicTextField(
+        value = text,
+        onValueChange = onTextChange,
+        modifier = Modifier
+          .weight(1f)
+          .fillMaxHeight()
+          .verticalScroll(scrollState)
+          .padding(start = 8.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
+        textStyle = textStyle,
+        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+        decorationBox = { innerTextField ->
+          Box {
+            if (text.isEmpty()) {
+              Text(
+                text = "// Start typing...",
+                style = textStyle.copy(color = Color.Gray)
+              )
+            }
+            innerTextField()
+          }
+        }
+      )
+    }
   }
 }
