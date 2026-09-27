@@ -15,6 +15,7 @@ Current capabilities:
 - Compose Desktop UI bootstrap
 - Virtual File System (LocalFileSystem + VirtualFile)
 - Basic Editor (Document + Editor + Compose EditorView)
+- PSI foundation (PsiElement, PsiFile, PsiManager, plain-text fallback)
 
 ## Tech Stack
 
@@ -63,7 +64,7 @@ We follow IntelliJ Platform inspired coding standards:
 1. ✅ Project skeleton + Compose Desktop bootstrap
 2. ✅ Virtual File System (VFS) — LocalFileSystem + VirtualFile
 3. ✅ Basic Editor (Document + Editor + Compose view)
-4. PSI foundation
+4. ✅ PSI foundation (PsiElement / PsiFile / PsiManager)
 5. Plugin system
 6. Language support (Kotlin / Java)
 7. Debugger integration
