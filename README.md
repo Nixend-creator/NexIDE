@@ -16,9 +16,10 @@ Current capabilities:
 
 ## Tech Stack
 
-- **Language:** Kotlin 2.4
-- **UI:** Compose Multiplatform (Desktop)
-- **Build:** Gradle + Version Catalog
+- **Language:** Kotlin 2.4.20
+- **UI:** Compose Multiplatform 1.12.1 (Desktop)
+- **Build:** Gradle 9.8 + Version Catalog
+- **JVM:** 21
 - **License:** Apache 2.0
 
 ## Modules
@@ -36,7 +37,7 @@ Current capabilities:
 ## Building
 
 Requirements:
-- JDK 17+
+- JDK 21+
 - Git
 
 ```bash
