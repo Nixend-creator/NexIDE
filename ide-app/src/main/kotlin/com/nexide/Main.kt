@@ -30,6 +30,9 @@ import com.nexide.platform.core.Application
 import com.nexide.platform.core.vfs.LocalFileSystem
 import com.nexide.platform.editor.Editor
 import com.nexide.platform.editor.ui.EditorView
+import com.nexide.platform.plugin.PluginManager
+import com.nexide.platform.plugin.example.CoreFileTypesPlugin
+import com.nexide.platform.plugin.example.FILE_TYPE_EP
 import com.nexide.platform.util.Logger
 import java.io.File
 
@@ -37,6 +40,12 @@ fun main() {
   Logger.info("Starting NexIDE...")
   val application = Application.create()
   application.start()
+
+  // Load built-in plugins
+  val pluginManager = PluginManager.getInstance()
+  pluginManager.loadPlugin(CoreFileTypesPlugin())
+
+  Logger.info("Registered file types: ${FILE_TYPE_EP.extensionList.map { it.name }}")
 
   application {
     val windowState = rememberWindowState(width = 1280.dp, height = 800.dp)
