@@ -17,6 +17,7 @@ Current capabilities:
 - Basic Editor (Document + Editor + Compose EditorView)
 - PSI foundation (PsiElement, PsiFile, PsiManager, plain-text fallback)
 - Plugin system (Extension Points + PluginManager)
+- Project View (file tree based on VFS)
 
 ## Tech Stack
 
@@ -67,9 +68,10 @@ We follow IntelliJ Platform inspired coding standards:
 3. ✅ Basic Editor (Document + Editor + Compose view)
 4. ✅ PSI foundation (PsiElement / PsiFile / PsiManager)
 5. ✅ Plugin system (Extension Points + PluginManager)
-6. Language support (Kotlin / Java)
-7. Debugger integration
-8. ...
+6. ✅ Project View (file tree)
+7. Language support (Kotlin / Java)
+8. Debugger integration
+9. ...
 
 ## Contributing
 
