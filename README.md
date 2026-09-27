@@ -1,0 +1,75 @@
+# NexIDE
+
+**Modern IDE inspired by IntelliJ IDEA**
+
+NexIDE is a full-featured desktop IDE built with Kotlin and Compose Multiplatform.
+It aims to provide a powerful editing experience with PSI, plugin system, debugger and more.
+
+## Status
+
+🚧 Early development (v0.1.0-SNAPSHOT)
+
+Current capabilities:
+- Project skeleton & multi-module architecture
+- Basic Application / Project model
+- Compose Desktop UI bootstrap
+
+## Tech Stack
+
+- **Language:** Kotlin 2.4
+- **UI:** Compose Multiplatform (Desktop)
+- **Build:** Gradle + Version Catalog
+- **License:** Apache 2.0
+
+## Modules
+
+| Module              | Description                              |
+|---------------------|------------------------------------------|
+| `platform:util`     | Shared utilities & logging               |
+| `platform:core`     | Application, Project, core services      |
+| `platform:psi`      | Program Structure Interface              |
+| `platform:plugin`   | Plugin system & extension points         |
+| `platform:editor`   | Editor component                         |
+| `platform:ui`       | Compose UI components                    |
+| `ide-app`           | Main application entry point             |
+
+## Building
+
+Requirements:
+- JDK 17+
+- Git
+
+```bash
+./gradlew :ide-app:run
+```
+
+## Coding Guidelines
+
+We follow IntelliJ Platform inspired coding standards:
+
+- Prefer Kotlin for all new code
+- Indentation: 2 spaces
+- Max line length: 140
+- Instance fields: `my` prefix
+- Static/class fields: `our` prefix
+- Apache 2.0 copyright header in every source file
+- See `.editorconfig` and full guidelines in the project
+
+## Roadmap (high level)
+
+1. ✅ Project skeleton + Compose Desktop bootstrap
+2. Virtual File System (VFS)
+3. Basic Editor with text editing
+4. PSI foundation
+5. Plugin system
+6. Language support (Kotlin / Java)
+7. Debugger integration
+8. ...
+
+## Contributing
+
+Contributions are welcome! Please follow the coding style and open issues/PRs.
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE)
