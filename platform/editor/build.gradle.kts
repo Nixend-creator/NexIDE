@@ -1,5 +1,7 @@
 plugins {
   alias(libs.plugins.kotlin.jvm)
+  alias(libs.plugins.compose.multiplatform)
+  alias(libs.plugins.compose.compiler)
 }
 
 dependencies {
@@ -8,6 +10,12 @@ dependencies {
   api(project(":platform:util"))
   implementation(libs.kotlin.stdlib)
   implementation(libs.kotlinx.coroutines.core)
+  implementation(libs.kotlinx.coroutines.swing)
+
+  implementation(compose.desktop.currentOs)
+  implementation(compose.material3)
+  implementation(compose.foundation)
+  implementation(compose.ui)
 
   testImplementation(libs.junit.jupiter)
   testRuntimeOnly("org.junit.platform:junit-platform-launcher")

@@ -16,21 +16,22 @@
 
 package com.nexide
 
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.nexide.platform.core.Application
+import com.nexide.platform.core.vfs.LocalFileSystem
+import com.nexide.platform.editor.Editor
+import com.nexide.platform.editor.ui.EditorView
 import com.nexide.platform.util.Logger
+import java.io.File
 
 fun main() {
   Logger.info("Starting NexIDE...")
@@ -55,17 +56,26 @@ fun main() {
 
 @Composable
 fun NexIdeApp() {
+  // Demo: create a temporary file and open it in the editor
+  val editor = remember {
+    val tempFile = File.createTempFile("nexide-demo", ".kt")
+    tempFile.writeText(
+      """
+      // Welcome to NexIDE
+      // This is a basic editor backed by VirtualFile + Document
+      
+      fun main() {
+          println("Hello from NexIDE!")
+      }
+      """.trimIndent()
+    )
+    val virtualFile = LocalFileSystem.getInstance().findFileByPath(tempFile.absolutePath)!!
+    Editor.create(virtualFile)
+  }
+
   MaterialTheme {
     Surface(modifier = Modifier.fillMaxSize()) {
-      Box(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
-        contentAlignment = Alignment.Center
-      ) {
-        Text(
-          text = "Welcome to NexIDE\n\nModern IDE inspired by IntelliJ IDEA",
-          style = MaterialTheme.typography.headlineMedium
-        )
-      }
+      EditorView(editor = editor, modifier = Modifier.fillMaxSize())
     }
   }
 }

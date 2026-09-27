@@ -14,6 +14,7 @@ Current capabilities:
 - Basic Application / Project model
 - Compose Desktop UI bootstrap
 - Virtual File System (LocalFileSystem + VirtualFile)
+- Basic Editor (Document + Editor + Compose EditorView)
 
 ## Tech Stack
 
@@ -61,7 +62,7 @@ We follow IntelliJ Platform inspired coding standards:
 
 1. ✅ Project skeleton + Compose Desktop bootstrap
 2. ✅ Virtual File System (VFS) — LocalFileSystem + VirtualFile
-3. Basic Editor with text editing
+3. ✅ Basic Editor (Document + Editor + Compose view)
 4. PSI foundation
 5. Plugin system
 6. Language support (Kotlin / Java)
