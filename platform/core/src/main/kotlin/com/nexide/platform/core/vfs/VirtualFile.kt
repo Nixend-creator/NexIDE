@@ -55,6 +55,19 @@ interface VirtualFile {
    */
   fun contentsToString(): String = contentsToByteArray().toString(Charsets.UTF_8)
 
+  /**
+   * Writes binary content to the file.
+   * Throws if the file is a directory or cannot be written.
+   */
+  fun setBinaryContent(content: ByteArray)
+
+  /**
+   * Writes text content to the file using UTF-8.
+   */
+  fun setBinaryContent(text: String) {
+    setBinaryContent(text.toByteArray(Charsets.UTF_8))
+  }
+
   /** Finds a child by name, or null if not found. */
   fun findChild(name: String): VirtualFile? {
     return getChildren().firstOrNull { it.name == name }

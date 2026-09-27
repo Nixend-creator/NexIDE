@@ -63,11 +63,20 @@ class Editor(
   }
 
   /**
-   * Marks the document as saved (clears modified flag).
-   * Actual writing to disk will be added later.
+   * Writes document content back to the underlying [VirtualFile] and clears the modified flag.
+   * @return true if save succeeded
    */
-  fun markSaved() {
-    myModified = false
+  fun save(): Boolean {
+    if (myDisposed) return false
+    return try {
+      file.setBinaryContent(document.getText())
+      myModified = false
+      Logger.info("Saved: ${file.path}")
+      true
+    } catch (e: Exception) {
+      Logger.error("Failed to save file: ${file.path}", e)
+      false
+    }
   }
 
   fun dispose() {

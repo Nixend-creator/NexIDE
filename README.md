@@ -18,6 +18,7 @@ Current capabilities:
 - PSI foundation (PsiElement, PsiFile, PsiManager, plain-text fallback)
 - Plugin system (Extension Points + PluginManager)
 - Project View (file tree based on VFS)
+- File save from Editor (Ctrl/Cmd+S + button)
 
 ## Tech Stack
 
@@ -69,9 +70,10 @@ We follow IntelliJ Platform inspired coding standards:
 4. ✅ PSI foundation (PsiElement / PsiFile / PsiManager)
 5. ✅ Plugin system (Extension Points + PluginManager)
 6. ✅ Project View (file tree)
-7. Language support (Kotlin / Java)
-8. Debugger integration
-9. ...
+7. ✅ File save (VFS write + Ctrl/Cmd+S)
+8. Language support (Kotlin / Java)
+9. Debugger integration
+10. ...
 
 ## Contributing
 

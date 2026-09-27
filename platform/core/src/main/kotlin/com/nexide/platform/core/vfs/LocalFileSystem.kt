@@ -126,6 +126,16 @@ internal class LocalVirtualFile(
     return Files.readAllBytes(myIoFile.toPath())
   }
 
+  override fun setBinaryContent(content: ByteArray) {
+    if (isDirectory) {
+      throw IllegalStateException("Cannot write contents to a directory: $path")
+    }
+    if (!isValid) {
+      throw IllegalStateException("File is no longer valid: $path")
+    }
+    Files.write(myIoFile.toPath(), content)
+  }
+
   internal fun refreshFromDisk() {
     myValid = myIoFile.exists()
     if (!myValid) {
