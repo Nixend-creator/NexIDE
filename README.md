@@ -26,6 +26,7 @@ Current capabilities:
 - Basic syntax highlighting (Kotlin / Java keywords, strings, comments)
 - Find in file (Ctrl/Cmd+F)
 - Project View expand/collapse
+- Go to Line (Ctrl/Cmd+G)
 
 ## Tech Stack
 
@@ -85,8 +86,9 @@ We follow IntelliJ Platform inspired coding standards:
 12. ✅ Basic syntax highlighting (Kotlin / Java)
 13. ✅ Find in file (Ctrl/Cmd+F)
 14. ✅ Project View expand/collapse
-15. Debugger integration
-16. ...
+15. ✅ Go to Line (Ctrl/Cmd+G)
+16. Debugger integration
+17. ...
 
 ## Contributing
 

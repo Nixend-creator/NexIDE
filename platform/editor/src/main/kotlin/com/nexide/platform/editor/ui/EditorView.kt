@@ -52,9 +52,11 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,13 +77,17 @@ fun EditorView(
   editor: Editor,
   modifier: Modifier = Modifier
 ) {
-  var text by remember(editor) { mutableStateOf(editor.document.getText()) }
+  var textFieldValue by remember(editor) {
+    mutableStateOf(TextFieldValue(editor.document.getText()))
+  }
+  val text get() = textFieldValue.text
   var statusMessage by remember { mutableStateOf<String?>(null) }
   var modifiedTick by remember { mutableStateOf(0) }
 
   var findVisible by remember { mutableStateOf(false) }
   var findQuery by remember { mutableStateOf("") }
   var findIndex by remember { mutableStateOf(0) }
+  var goToLineVisible by remember { mutableStateOf(false) }
   val findMatches = remember(text, findQuery) { findMatches(text, findQuery) }
   if (findIndex >= findMatches.size && findMatches.isNotEmpty()) {
     findIndex = 0
@@ -95,7 +101,7 @@ fun EditorView(
 
   fun performUndo() {
     if (editor.undoManager.undo()) {
-      text = editor.document.getText()
+      textFieldValue = TextFieldValue(editor.document.getText())
       statusMessage = "Undo"
       modifiedTick++
     }
@@ -103,17 +109,27 @@ fun EditorView(
 
   fun performRedo() {
     if (editor.undoManager.redo()) {
-      text = editor.document.getText()
+      textFieldValue = TextFieldValue(editor.document.getText())
       statusMessage = "Redo"
       modifiedTick++
     }
   }
 
-  val onTextChange: (String) -> Unit = { newText ->
-    text = newText
-    editor.document.setText(newText)
-    editor.undoManager.recordChange()
-    statusMessage = null
+  fun goToLine(line: Int) {
+    val offset = offsetOfLine(text, line).coerceIn(0, text.length)
+    textFieldValue = textFieldValue.copy(selection = TextRange(offset))
+    statusMessage = "Line $line"
+    goToLineVisible = false
+    modifiedTick++
+  }
+
+  val onTextChange: (TextFieldValue) -> Unit = { newValue ->
+    if (newValue.text != textFieldValue.text) {
+      editor.document.setText(newValue.text)
+      editor.undoManager.recordChange()
+      statusMessage = null
+    }
+    textFieldValue = newValue
     modifiedTick++
   }
 
@@ -184,6 +200,10 @@ fun EditorView(
           }
           ctrlOrMeta && event.key == Key.F -> {
             findVisible = true
+            true
+          }
+          ctrlOrMeta && event.key == Key.G -> {
+            goToLineVisible = true
             true
           }
           event.key == Key.Escape && findVisible -> {
@@ -266,6 +286,14 @@ fun EditorView(
       )
     }
 
+    if (goToLineVisible) {
+      GoToLineDialog(
+        maxLine = lineCount,
+        onGoTo = { goToLine(it) },
+        onDismiss = { goToLineVisible = false }
+      )
+    }
+
     // Editor area: gutter + text
     Row(
       modifier = Modifier
@@ -290,7 +318,7 @@ fun EditorView(
 
       // Text field with syntax highlight overlay
       BasicTextField(
-        value = text,
+        value = textFieldValue,
         onValueChange = onTextChange,
         modifier = Modifier
           .weight(1f)
