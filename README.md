@@ -29,6 +29,7 @@ Current capabilities:
 - Go to Line (Ctrl/Cmd+G)
 - Replace / Replace All (Ctrl/Cmd+R)
 - Cursor line/column in status bar
+- Confirm on close unsaved tab
 
 ## Tech Stack
 
@@ -91,8 +92,9 @@ We follow IntelliJ Platform inspired coding standards:
 15. ✅ Go to Line (Ctrl/Cmd+G)
 16. ✅ Replace / Replace All (Ctrl/Cmd+R)
 17. ✅ Cursor line/column in status bar
-18. Debugger integration
-19. ...
+18. ✅ Confirm on close unsaved tab
+19. Debugger integration
+20. ...
 
 ## Contributing
 

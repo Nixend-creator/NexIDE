@@ -45,6 +45,8 @@ import com.nexide.platform.editor.ui.EditorView
 import com.nexide.platform.plugin.PluginManager
 import com.nexide.platform.plugin.example.CoreFileTypesPlugin
 import com.nexide.platform.plugin.example.FILE_TYPE_EP
+import com.nexide.platform.ui.dialog.CloseConfirmResult
+import com.nexide.platform.ui.dialog.ConfirmCloseDialog
 import com.nexide.platform.ui.projectview.ProjectView
 import com.nexide.platform.ui.tabs.EditorTabs
 import com.nexide.platform.util.Logger
@@ -94,6 +96,7 @@ fun NexIdeApp(application: Application) {
   val openEditors = remember { mutableStateListOf<Editor>() }
   var activeEditor by remember { mutableStateOf<Editor?>(null) }
   var selectedFile by remember { mutableStateOf<VirtualFile?>(null) }
+  var pendingCloseEditor by remember { mutableStateOf<Editor?>(null) }
 
   fun openFile(file: VirtualFile) {
     selectedFile = file
@@ -108,7 +111,7 @@ fun NexIdeApp(application: Application) {
     Logger.info("Opened tab: ${file.path}")
   }
 
-  fun closeEditor(editor: Editor) {
+  fun doCloseEditor(editor: Editor) {
     val index = openEditors.indexOf(editor)
     openEditors.remove(editor)
     editor.dispose()
@@ -122,7 +125,35 @@ fun NexIdeApp(application: Application) {
     }
   }
 
+  fun requestCloseEditor(editor: Editor) {
+    if (editor.isModified) {
+      pendingCloseEditor = editor
+    } else {
+      doCloseEditor(editor)
+    }
+  }
+
   MaterialTheme {
+    val closing = pendingCloseEditor
+    if (closing != null) {
+      ConfirmCloseDialog(fileName = closing.file.name) { result ->
+        when (result) {
+          CloseConfirmResult.SAVE -> {
+            closing.save()
+            doCloseEditor(closing)
+            pendingCloseEditor = null
+          }
+          CloseConfirmResult.DONT_SAVE -> {
+            doCloseEditor(closing)
+            pendingCloseEditor = null
+          }
+          CloseConfirmResult.CANCEL -> {
+            pendingCloseEditor = null
+          }
+        }
+      }
+    }
+
     Surface(modifier = Modifier.fillMaxSize()) {
       Row(modifier = Modifier.fillMaxSize()) {
         ProjectView(
@@ -144,7 +175,7 @@ fun NexIdeApp(application: Application) {
               activeEditor = it
               selectedFile = it.file
             },
-            onClose = { closeEditor(it) }
+            onClose = { requestCloseEditor(it) }
           )
 
           val editor = activeEditor
