@@ -30,6 +30,7 @@ Current capabilities:
 - Replace / Replace All (Ctrl/Cmd+R)
 - Cursor line/column in status bar
 - Confirm on close unsaved tab
+- File menu: Open Project, Save, Exit (Ctrl+O / Ctrl+S)
 
 ## Tech Stack
 
@@ -93,8 +94,9 @@ We follow IntelliJ Platform inspired coding standards:
 16. ✅ Replace / Replace All (Ctrl/Cmd+R)
 17. ✅ Cursor line/column in status bar
 18. ✅ Confirm on close unsaved tab
-19. Debugger integration
-20. ...
+19. ✅ File menu (Open Project / Save / Exit)
+20. Debugger integration
+21. ...
 
 ## Contributing
 
