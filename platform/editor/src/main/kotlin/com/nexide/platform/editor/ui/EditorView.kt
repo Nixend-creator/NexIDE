@@ -85,12 +85,39 @@ fun EditorView(
   var modifiedTick by remember { mutableStateOf(0) }
 
   var findVisible by remember { mutableStateOf(false) }
+  var replaceMode by remember { mutableStateOf(false) }
   var findQuery by remember { mutableStateOf("") }
+  var replaceText by remember { mutableStateOf("") }
   var findIndex by remember { mutableStateOf(0) }
   var goToLineVisible by remember { mutableStateOf(false) }
   val findMatches = remember(text, findQuery) { findMatches(text, findQuery) }
   if (findIndex >= findMatches.size && findMatches.isNotEmpty()) {
     findIndex = 0
+  }
+
+  fun applyTextChange(newText: String, caret: Int = newText.length) {
+    editor.document.setText(newText)
+    editor.undoManager.recordChange()
+    textFieldValue = TextFieldValue(newText, TextRange(caret.coerceIn(0, newText.length)))
+    modifiedTick++
+  }
+
+  fun performReplace() {
+    if (findMatches.isEmpty() || findQuery.isEmpty()) return
+    val idx = findIndex.coerceIn(0, findMatches.lastIndex)
+    val start = findMatches[idx]
+    val newText = replaceAt(text, start, findQuery.length, replaceText)
+    applyTextChange(newText, start + replaceText.length)
+    statusMessage = "Replaced"
+  }
+
+  fun performReplaceAll() {
+    if (findMatches.isEmpty() || findQuery.isEmpty()) return
+    val count = findMatches.size
+    val newText = replaceAll(text, findQuery, replaceText)
+    applyTextChange(newText)
+    findIndex = 0
+    statusMessage = "Replaced $count occurrence(s)"
   }
 
   fun performSave() {
@@ -200,6 +227,12 @@ fun EditorView(
           }
           ctrlOrMeta && event.key == Key.F -> {
             findVisible = true
+            replaceMode = false
+            true
+          }
+          ctrlOrMeta && event.key == Key.R -> {
+            findVisible = true
+            replaceMode = true
             true
           }
           ctrlOrMeta && event.key == Key.G -> {
@@ -208,6 +241,7 @@ fun EditorView(
           }
           event.key == Key.Escape && findVisible -> {
             findVisible = false
+            replaceMode = false
             true
           }
           ctrlOrMeta && event.key == Key.Z && !event.isShiftPressed -> {
@@ -282,7 +316,15 @@ fun EditorView(
             findIndex = if (findIndex <= 0) findMatches.lastIndex else findIndex - 1
           }
         },
-        onClose = { findVisible = false }
+        onClose = {
+          findVisible = false
+          replaceMode = false
+        },
+        replaceMode = replaceMode,
+        replaceText = replaceText,
+        onReplaceTextChange = { replaceText = it },
+        onReplace = { performReplace() },
+        onReplaceAll = { performReplaceAll() }
       )
     }
 

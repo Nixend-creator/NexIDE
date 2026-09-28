@@ -27,6 +27,7 @@ Current capabilities:
 - Find in file (Ctrl/Cmd+F)
 - Project View expand/collapse
 - Go to Line (Ctrl/Cmd+G)
+- Replace / Replace All (Ctrl/Cmd+R)
 
 ## Tech Stack
 
@@ -87,8 +88,9 @@ We follow IntelliJ Platform inspired coding standards:
 13. ✅ Find in file (Ctrl/Cmd+F)
 14. ✅ Project View expand/collapse
 15. ✅ Go to Line (Ctrl/Cmd+G)
-16. Debugger integration
-17. ...
+16. ✅ Replace / Replace All (Ctrl/Cmd+R)
+17. Debugger integration
+18. ...
 
 ## Contributing
 

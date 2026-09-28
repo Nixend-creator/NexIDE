@@ -17,6 +17,7 @@
 package com.nexide.platform.editor.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -42,7 +43,8 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 
 /**
- * Simple find bar: query input, match count, next/prev, close.
+ * Find / Replace bar.
+ * When [replaceMode] is true, shows replace field and Replace / Replace All actions.
  */
 @Composable
 fun FindBar(
@@ -53,6 +55,11 @@ fun FindBar(
   onNext: () -> Unit,
   onPrev: () -> Unit,
   onClose: () -> Unit,
+  replaceMode: Boolean = false,
+  replaceText: String = "",
+  onReplaceTextChange: (String) -> Unit = {},
+  onReplace: () -> Unit = {},
+  onReplaceAll: () -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   val focusRequester = remember { FocusRequester() }
@@ -61,7 +68,7 @@ fun FindBar(
     focusRequester.requestFocus()
   }
 
-  Row(
+  Column(
     modifier = modifier
       .fillMaxWidth()
       .background(MaterialTheme.colorScheme.secondaryContainer)
@@ -79,58 +86,106 @@ fun FindBar(
           }
           else -> false
         }
-      },
-    verticalAlignment = Alignment.CenterVertically
+      }
   ) {
-    Text(
-      text = "Find:",
-      style = MaterialTheme.typography.labelMedium,
-      color = MaterialTheme.colorScheme.onSecondaryContainer
-    )
-    Spacer(modifier = Modifier.width(8.dp))
+    // Find row
+    Row(
+      verticalAlignment = Alignment.CenterVertically,
+      modifier = Modifier.fillMaxWidth()
+    ) {
+      Text(
+        text = "Find:",
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSecondaryContainer,
+        modifier = Modifier.width(56.dp)
+      )
 
-    BasicTextField(
-      value = query,
-      onValueChange = onQueryChange,
-      singleLine = true,
-      textStyle = MaterialTheme.typography.bodyMedium.copy(
-        color = MaterialTheme.colorScheme.onSecondaryContainer
-      ),
-      cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-      modifier = Modifier
-        .weight(1f)
-        .focusRequester(focusRequester)
-        .background(
-          MaterialTheme.colorScheme.surface,
-          shape = MaterialTheme.shapes.small
+      BasicTextField(
+        value = query,
+        onValueChange = onQueryChange,
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodyMedium.copy(
+          color = MaterialTheme.colorScheme.onSecondaryContainer
+        ),
+        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+        modifier = Modifier
+          .weight(1f)
+          .focusRequester(focusRequester)
+          .background(
+            MaterialTheme.colorScheme.surface,
+            shape = MaterialTheme.shapes.small
+          )
+          .padding(horizontal = 8.dp, vertical = 4.dp)
+      )
+
+      Spacer(modifier = Modifier.width(8.dp))
+
+      val countLabel = if (query.isEmpty()) {
+        ""
+      } else if (matchCount == 0) {
+        "No results"
+      } else {
+        "${currentIndex + 1} of $matchCount"
+      }
+      Text(
+        text = countLabel,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSecondaryContainer,
+        modifier = Modifier.width(90.dp)
+      )
+
+      TextButton(onClick = onPrev, enabled = matchCount > 0) {
+        Text("↑", style = MaterialTheme.typography.labelLarge)
+      }
+      TextButton(onClick = onNext, enabled = matchCount > 0) {
+        Text("↓", style = MaterialTheme.typography.labelLarge)
+      }
+      TextButton(onClick = onClose) {
+        Text("×", style = MaterialTheme.typography.labelLarge)
+      }
+    }
+
+    // Replace row
+    if (replaceMode) {
+      Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier
+          .fillMaxWidth()
+          .padding(top = 4.dp)
+      ) {
+        Text(
+          text = "Replace:",
+          style = MaterialTheme.typography.labelMedium,
+          color = MaterialTheme.colorScheme.onSecondaryContainer,
+          modifier = Modifier.width(56.dp)
         )
-        .padding(horizontal = 8.dp, vertical = 4.dp)
-    )
 
-    Spacer(modifier = Modifier.width(8.dp))
+        BasicTextField(
+          value = replaceText,
+          onValueChange = onReplaceTextChange,
+          singleLine = true,
+          textStyle = MaterialTheme.typography.bodyMedium.copy(
+            color = MaterialTheme.colorScheme.onSecondaryContainer
+          ),
+          cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+          modifier = Modifier
+            .weight(1f)
+            .background(
+              MaterialTheme.colorScheme.surface,
+              shape = MaterialTheme.shapes.small
+            )
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+        )
 
-    val countLabel = if (query.isEmpty()) {
-      ""
-    } else if (matchCount == 0) {
-      "No results"
-    } else {
-      "${currentIndex + 1} of $matchCount"
-    }
-    Text(
-      text = countLabel,
-      style = MaterialTheme.typography.labelMedium,
-      color = MaterialTheme.colorScheme.onSecondaryContainer,
-      modifier = Modifier.width(90.dp)
-    )
+        Spacer(modifier = Modifier.width(8.dp))
 
-    TextButton(onClick = onPrev, enabled = matchCount > 0) {
-      Text("↑", style = MaterialTheme.typography.labelLarge)
-    }
-    TextButton(onClick = onNext, enabled = matchCount > 0) {
-      Text("↓", style = MaterialTheme.typography.labelLarge)
-    }
-    TextButton(onClick = onClose) {
-      Text("×", style = MaterialTheme.typography.labelLarge)
+        TextButton(onClick = onReplace, enabled = matchCount > 0) {
+          Text("Replace", style = MaterialTheme.typography.labelMedium)
+        }
+        TextButton(onClick = onReplaceAll, enabled = matchCount > 0) {
+          Text("Replace All", style = MaterialTheme.typography.labelMedium)
+        }
+      }
     }
   }
 }
@@ -152,4 +207,34 @@ fun findMatches(text: String, query: String): List<Int> {
     idx = found + 1
   }
   return result
+}
+
+/**
+ * Replaces the match at [startOffset] with [replacement].
+ * Match length is [queryLength] (original query length in the document).
+ */
+fun replaceAt(text: String, startOffset: Int, queryLength: Int, replacement: String): String {
+  val end = (startOffset + queryLength).coerceAtMost(text.length)
+  if (startOffset < 0 || startOffset > text.length) return text
+  return text.substring(0, startOffset) + replacement + text.substring(end)
+}
+
+/**
+ * Replaces all case-insensitive occurrences of [query] with [replacement].
+ */
+fun replaceAll(text: String, query: String, replacement: String): String {
+  if (query.isEmpty()) return text
+  // Case-insensitive replace while preserving structure via lowercase scan
+  val matches = findMatches(text, query)
+  if (matches.isEmpty()) return text
+  val sb = StringBuilder()
+  var last = 0
+  val qLen = query.length
+  for (start in matches) {
+    sb.append(text.substring(last, start))
+    sb.append(replacement)
+    last = start + qLen
+  }
+  sb.append(text.substring(last))
+  return sb.toString()
 }
