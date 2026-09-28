@@ -25,6 +25,7 @@ Current capabilities:
 - Language support (FileType EP + LanguageParser EP + PSI)
 - Basic syntax highlighting (Kotlin / Java keywords, strings, comments)
 - Find in file (Ctrl/Cmd+F)
+- Project View expand/collapse
 
 ## Tech Stack
 
@@ -83,8 +84,9 @@ We follow IntelliJ Platform inspired coding standards:
 11. ✅ Language support (FileType + LanguageParser EP)
 12. ✅ Basic syntax highlighting (Kotlin / Java)
 13. ✅ Find in file (Ctrl/Cmd+F)
-14. Debugger integration
-15. ...
+14. ✅ Project View expand/collapse
+15. Debugger integration
+16. ...
 
 ## Contributing
 
