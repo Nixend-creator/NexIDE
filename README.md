@@ -28,6 +28,7 @@ Current capabilities:
 - Project View expand/collapse
 - Go to Line (Ctrl/Cmd+G)
 - Replace / Replace All (Ctrl/Cmd+R)
+- Cursor line/column in status bar
 
 ## Tech Stack
 
@@ -89,8 +90,9 @@ We follow IntelliJ Platform inspired coding standards:
 14. ✅ Project View expand/collapse
 15. ✅ Go to Line (Ctrl/Cmd+G)
 16. ✅ Replace / Replace All (Ctrl/Cmd+R)
-17. Debugger integration
-18. ...
+17. ✅ Cursor line/column in status bar
+18. Debugger integration
+19. ...
 
 ## Contributing
 

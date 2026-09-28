@@ -167,3 +167,21 @@ fun offsetOfLine(text: String, line: Int): Int {
   }
   return text.length
 }
+
+/**
+ * Converts a character [offset] into 1-based (line, column).
+ */
+fun lineColAtOffset(text: String, offset: Int): Pair<Int, Int> {
+  val safe = offset.coerceIn(0, text.length)
+  var line = 1
+  var col = 1
+  for (i in 0 until safe) {
+    if (text[i] == '\n') {
+      line++
+      col = 1
+    } else {
+      col++
+    }
+  }
+  return line to col
+}

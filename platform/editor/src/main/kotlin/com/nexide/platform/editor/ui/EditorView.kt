@@ -267,11 +267,15 @@ fun EditorView(
       @Suppress("UNUSED_EXPRESSION")
       modifiedTick
 
+      val caretOffset = textFieldValue.selection.start
+      val (caretLine, caretCol) = lineColAtOffset(text, caretOffset)
       val status = buildString {
         append(editor.file.name)
         if (editor.isModified) append(" *")
         append("  |  ")
         append(language)
+        append("  |  ")
+        append("Ln $caretLine, Col $caretCol")
         append("  |  ")
         append("${editor.document.textLength} chars")
         append("  |  ")
