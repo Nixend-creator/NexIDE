@@ -31,6 +31,7 @@ Current capabilities:
 - Cursor line/column in status bar
 - Confirm on close unsaved tab
 - File menu: Open Project, Save, Exit (Ctrl+O / Ctrl+S)
+- Run: Gradle build/test/tasks + output panel + Stop
 
 ## Tech Stack
 
@@ -95,8 +96,11 @@ We follow IntelliJ Platform inspired coding standards:
 17. ✅ Cursor line/column in status bar
 18. ✅ Confirm on close unsaved tab
 19. ✅ File menu (Open Project / Save / Exit)
-20. Debugger integration
-21. ...
+20. ✅ Run (Gradle + output panel)
+21. Terminal
+22. Search in files
+23. Debugger integration
+24. ...
 
 ## Contributing
 

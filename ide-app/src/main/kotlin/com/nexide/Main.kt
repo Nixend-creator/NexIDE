@@ -22,6 +22,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -47,6 +49,8 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.nexide.platform.core.Application
 import com.nexide.platform.core.Project
+import com.nexide.platform.core.run.GradleRunSupport
+import com.nexide.platform.core.run.ProcessRunner
 import com.nexide.platform.core.vfs.VirtualFile
 import com.nexide.platform.editor.Editor
 import com.nexide.platform.editor.ui.EditorView
@@ -56,6 +60,7 @@ import com.nexide.platform.plugin.example.FILE_TYPE_EP
 import com.nexide.platform.ui.dialog.CloseConfirmResult
 import com.nexide.platform.ui.dialog.ConfirmCloseDialog
 import com.nexide.platform.ui.projectview.ProjectView
+import com.nexide.platform.ui.run.RunToolWindow
 import com.nexide.platform.ui.tabs.EditorTabs
 import com.nexide.platform.util.Logger
 import java.io.File
@@ -91,6 +96,20 @@ fun main() {
     var activeEditor by mutableStateOf<Editor?>(null)
     var selectedFile by mutableStateOf<VirtualFile?>(null)
     var pendingCloseEditor by mutableStateOf<Editor?>(null)
+    val processRunner = remember { ProcessRunner() }
+    var runPanelVisible by mutableStateOf(false)
+
+    fun runGradle(task: String) {
+      val dir = File(project.basePath)
+      if (!GradleRunSupport.isGradleProject(dir)) {
+        Logger.warn("Not a Gradle project: ${dir.absolutePath}")
+        runPanelVisible = true
+        return
+      }
+      val gradle = GradleRunSupport.findGradleCommand(dir) ?: return
+      runPanelVisible = true
+      processRunner.start(gradle + task, dir)
+    }
 
     fun doCloseEditor(editor: Editor) {
       val index = openEditors.indexOf(editor)
@@ -176,6 +195,21 @@ fun main() {
             exitApplication()
           })
         }
+        Menu("Run", mnemonic = 'R') {
+          Item("Gradle: build", onClick = { runGradle("build") })
+          Item("Gradle: test", onClick = { runGradle("test") })
+          Item("Gradle: tasks", onClick = { runGradle("tasks") })
+          Separator()
+          Item(
+            "Stop",
+            enabled = processRunner.isRunning,
+            onClick = { processRunner.stop() }
+          )
+          Item(
+            "Show Run Tool Window",
+            onClick = { runPanelVisible = true }
+          )
+        }
       }
 
       NexIdeApp(
@@ -184,6 +218,9 @@ fun main() {
         activeEditor = activeEditor,
         selectedFile = selectedFile,
         pendingCloseEditor = pendingCloseEditor,
+        processRunner = processRunner,
+        runPanelVisible = runPanelVisible,
+        onRunPanelVisibleChange = { runPanelVisible = it },
         onOpenFile = { file ->
           selectedFile = file
           val existing = openEditors.firstOrNull { it.file.path == file.path }
@@ -235,6 +272,9 @@ fun NexIdeApp(
   activeEditor: Editor?,
   selectedFile: VirtualFile?,
   pendingCloseEditor: Editor?,
+  processRunner: ProcessRunner,
+  runPanelVisible: Boolean,
+  onRunPanelVisibleChange: (Boolean) -> Unit,
   onOpenFile: (VirtualFile) -> Unit,
   onSelectEditor: (Editor) -> Unit,
   onRequestClose: (Editor) -> Unit,
@@ -248,44 +288,56 @@ fun NexIdeApp(
     }
 
     Surface(modifier = Modifier.fillMaxSize()) {
-      Row(modifier = Modifier.fillMaxSize()) {
-        ProjectView(
-          root = project.baseDir,
-          selectedFile = selectedFile,
-          onFileSelected = onOpenFile,
-          modifier = Modifier
-            .width(280.dp)
-            .fillMaxHeight()
-        )
-
-        VerticalDivider()
-
-        Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-          EditorTabs(
-            editors = openEditors,
-            activeEditor = activeEditor,
-            onSelect = onSelectEditor,
-            onClose = onRequestClose
+      Column(modifier = Modifier.fillMaxSize()) {
+        Row(modifier = Modifier.weight(1f).fillMaxSize()) {
+          ProjectView(
+            root = project.baseDir,
+            selectedFile = selectedFile,
+            onFileSelected = onOpenFile,
+            modifier = Modifier
+              .width(280.dp)
+              .fillMaxHeight()
           )
 
-          val editor = activeEditor
-          if (editor != null) {
-            EditorView(
-              editor = editor,
-              modifier = Modifier.weight(1f).fillMaxSize()
+          VerticalDivider()
+
+          Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+            EditorTabs(
+              editors = openEditors,
+              activeEditor = activeEditor,
+              onSelect = onSelectEditor,
+              onClose = onRequestClose
             )
-          } else {
-            Box(
-              modifier = Modifier.weight(1f).fillMaxSize(),
-              contentAlignment = Alignment.Center
-            ) {
-              Text(
-                text = "Open a project (File → Open Project) or select a file",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+
+            val editor = activeEditor
+            if (editor != null) {
+              EditorView(
+                editor = editor,
+                modifier = Modifier.weight(1f).fillMaxSize()
               )
+            } else {
+              Box(
+                modifier = Modifier.weight(1f).fillMaxSize(),
+                contentAlignment = Alignment.Center
+              ) {
+                Text(
+                  text = "Open a project (File → Open Project) or select a file",
+                  style = MaterialTheme.typography.bodyLarge,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+              }
             }
           }
+        }
+
+        if (runPanelVisible) {
+          HorizontalDivider()
+          RunToolWindow(
+            runner = processRunner,
+            visible = true,
+            onClose = { onRunPanelVisibleChange(false) },
+            modifier = Modifier.fillMaxWidth()
+          )
         }
       }
     }
