@@ -7,6 +7,7 @@ plugins {
 dependencies {
   api(project(":platform:core"))
   api(project(":platform:psi"))
+  api(project(":platform:plugin"))
   api(project(":platform:util"))
   implementation(libs.kotlin.stdlib)
   implementation(libs.kotlinx.coroutines.core)

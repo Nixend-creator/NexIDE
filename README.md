@@ -22,6 +22,7 @@ Current capabilities:
 - Editor tabs (multiple open files)
 - Line numbers in editor
 - Undo / Redo (Ctrl+Z / Ctrl+Y)
+- Language support (FileType EP + LanguageParser EP + PSI)
 
 ## Tech Stack
 
@@ -77,7 +78,7 @@ We follow IntelliJ Platform inspired coding standards:
 8. ✅ Editor tabs
 9. ✅ Line numbers in editor
 10. ✅ Undo / Redo
-11. Language support (Kotlin / Java)
+11. ✅ Language support (FileType + LanguageParser EP)
 12. Debugger integration
 13. ...
 

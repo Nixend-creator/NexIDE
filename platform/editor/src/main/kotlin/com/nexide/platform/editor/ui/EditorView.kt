@@ -56,6 +56,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nexide.platform.editor.Editor
+import com.nexide.platform.plugin.filetype.FileTypeRegistry
 
 private val EDITOR_FONT_SIZE = 14.sp
 private val EDITOR_LINE_HEIGHT = 20.sp
@@ -160,9 +161,12 @@ fun EditorView(
       @Suppress("UNUSED_EXPRESSION")
       modifiedTick
 
+      val language = FileTypeRegistry.getLanguageByFileName(editor.file.name)
       val status = buildString {
         append(editor.file.name)
         if (editor.isModified) append(" *")
+        append("  |  ")
+        append(language)
         append("  |  ")
         append("${editor.document.textLength} chars")
         append("  |  ")

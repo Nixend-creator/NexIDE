@@ -16,24 +16,15 @@
 
 package com.nexide.platform.plugin.example
 
-import com.nexide.platform.plugin.ExtensionPointName
 import com.nexide.platform.plugin.Extensions
 import com.nexide.platform.plugin.Plugin
+import com.nexide.platform.plugin.filetype.FILE_TYPE_EP
+import com.nexide.platform.plugin.filetype.FileType
 
-/**
- * Example extension point: contributes a file type.
- * Later will be used by VFS / Editor / PSI.
- */
-interface FileType {
-  val name: String
-  val defaultExtension: String
-  val language: String
-}
+// Re-export for existing imports
+typealias FileType = com.nexide.platform.plugin.filetype.FileType
 
-/**
- * Extension point name for file types.
- */
-val FILE_TYPE_EP = ExtensionPointName<FileType>("com.nexide.fileType")
+val FILE_TYPE_EP = com.nexide.platform.plugin.filetype.FILE_TYPE_EP
 
 /**
  * Built-in plugin that registers a few default file types.
@@ -58,6 +49,11 @@ class CoreFileTypesPlugin : Plugin {
       override val name = "Text"
       override val defaultExtension = "txt"
       override val language = "TEXT"
+    })
+    Extensions.registerExtension(FILE_TYPE_EP, object : FileType {
+      override val name = "Kotlin Script"
+      override val defaultExtension = "kts"
+      override val language = "kotlin"
     })
   }
 }

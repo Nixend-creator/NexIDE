@@ -17,6 +17,7 @@
 package com.nexide.platform.psi
 
 import com.nexide.platform.core.vfs.VirtualFile
+import com.nexide.platform.plugin.filetype.FileTypeRegistry
 import com.nexide.platform.psi.impl.PsiPlainTextFile
 import com.nexide.platform.util.Logger
 import java.util.concurrent.ConcurrentHashMap
@@ -25,8 +26,8 @@ import java.util.concurrent.ConcurrentHashMap
  * Manages PSI files for the application.
  * Analogous to com.intellij.psi.PsiManager (simplified).
  *
- * Currently creates only plain-text PSI files.
- * Later will dispatch to language-specific parsers.
+ * Resolves language via [FileTypeRegistry] and dispatches to
+ * [LANGUAGE_PARSER_EP] when a language-specific parser is registered.
  */
 class PsiManager private constructor() {
 
@@ -34,7 +35,7 @@ class PsiManager private constructor() {
 
   /**
    * Returns a PSI file for the given VirtualFile.
-   * Uses cache; creates a new plain-text PSI if not present.
+   * Uses cache; creates PSI via language parser or plain-text fallback.
    */
   fun findFile(virtualFile: VirtualFile): PsiFile? {
     if (!virtualFile.isValid || virtualFile.isDirectory) {
@@ -49,7 +50,8 @@ class PsiManager private constructor() {
 
     return try {
       val text = virtualFile.contentsToString()
-      val psiFile = PsiPlainTextFile(virtualFile, text)
+      val language = FileTypeRegistry.getLanguageByFileName(virtualFile.name)
+      val psiFile = createPsiFile(virtualFile, text, language)
       myCache[path] = psiFile
       psiFile
     } catch (e: Exception) {
@@ -58,9 +60,20 @@ class PsiManager private constructor() {
     }
   }
 
-  /**
-   * Drops cached PSI for the given file (e.g. after external change).
-   */
+  private fun createPsiFile(virtualFile: VirtualFile, text: String, language: String): PsiFile {
+    // Try language-specific parsers first
+    for (parser in LANGUAGE_PARSER_EP.extensionList) {
+      if (parser.language.equals(language, ignoreCase = true)) {
+        val parsed = parser.parse(virtualFile, text)
+        if (parsed != null) {
+          return parsed
+        }
+      }
+    }
+    // Fallback: plain text with correct language id
+    return PsiPlainTextFile(virtualFile, text, language)
+  }
+
   fun dropFileCache(virtualFile: VirtualFile) {
     myCache.remove(virtualFile.path)
   }

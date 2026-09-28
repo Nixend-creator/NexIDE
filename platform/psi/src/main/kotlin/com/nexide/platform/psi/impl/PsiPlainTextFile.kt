@@ -27,10 +27,9 @@ import com.nexide.platform.psi.PsiFile
  */
 class PsiPlainTextFile(
   override val virtualFile: VirtualFile,
-  private val myText: String
-) : PsiElementBase(), PsiFile {
-
+  private val myText: String,
   override val language: String = "TEXT"
+) : PsiElementBase(), PsiFile {
 
   override val children: Array<PsiElement> = emptyArray()
 

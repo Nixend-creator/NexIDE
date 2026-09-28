@@ -17,6 +17,10 @@
 package com.nexide.platform.psi
 
 import com.nexide.platform.core.vfs.LocalFileSystem
+import com.nexide.platform.plugin.Extensions
+import com.nexide.platform.plugin.filetype.FILE_TYPE_EP
+import com.nexide.platform.plugin.filetype.FileType
+import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
@@ -27,6 +31,12 @@ class PsiManagerTest {
 
   @TempDir
   lateinit var tempDir: Path
+
+  @AfterEach
+  fun cleanup() {
+    Extensions.clearAll()
+    PsiManager.getInstance().clearCache()
+  }
 
   @Test
   fun `findFile creates plain text PSI`() {
@@ -70,5 +80,24 @@ class PsiManagerTest {
     val second = psiManager.findFile(virtualFile)
 
     assertSame(first, second)
+  }
+
+  @Test
+  fun `findFile resolves kotlin language from file type EP`() {
+    Extensions.registerExtension(FILE_TYPE_EP, object : FileType {
+      override val name = "Kotlin"
+      override val defaultExtension = "kt"
+      override val language = "kotlin"
+    })
+
+    val testFile = tempDir.resolve("Main.kt")
+    Files.writeString(testFile, "fun main() {}")
+
+    val virtualFile = LocalFileSystem.getInstance()
+      .findFileByPath(testFile.toAbsolutePath().toString())!!
+
+    val psiFile = PsiManager.getInstance().findFile(virtualFile)
+    assertNotNull(psiFile)
+    assertEquals("kotlin", psiFile!!.language)
   }
 }
