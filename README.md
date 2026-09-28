@@ -33,6 +33,7 @@ Current capabilities:
 - File menu: Open Project, Save, Exit (Ctrl+O / Ctrl+S)
 - Run: Gradle build/test/tasks + output panel + Stop
 - Terminal (commands in project dir, cd, history)
+- Find in Files (Ctrl/Cmd+Shift+F)
 
 ## Tech Stack
 
@@ -99,7 +100,7 @@ We follow IntelliJ Platform inspired coding standards:
 19. ✅ File menu (Open Project / Save / Exit)
 20. ✅ Run (Gradle + output panel)
 21. ✅ Terminal
-22. Search in files
+22. ✅ Find in Files (Ctrl/Cmd+Shift+F)
 23. Debugger integration
 24. ...
 

@@ -34,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -75,7 +76,10 @@ private val EDITOR_LINE_HEIGHT = 20.sp
 @Composable
 fun EditorView(
   editor: Editor,
-  modifier: Modifier = Modifier
+  modifier: Modifier = Modifier,
+  /** When non-null, jumps caret to this 1-based line (e.g. from Find in Files). */
+  gotoLineRequest: Int? = null,
+  onGotoLineHandled: () -> Unit = {}
 ) {
   var textFieldValue by remember(editor) {
     mutableStateOf(TextFieldValue(editor.document.getText()))
@@ -93,6 +97,17 @@ fun EditorView(
   val findMatches = remember(text, findQuery) { findMatches(text, findQuery) }
   if (findIndex >= findMatches.size && findMatches.isNotEmpty()) {
     findIndex = 0
+  }
+
+  LaunchedEffect(gotoLineRequest, editor) {
+    val line = gotoLineRequest
+    if (line != null && line > 0) {
+      val offset = offsetOfLine(textFieldValue.text, line).coerceIn(0, textFieldValue.text.length)
+      textFieldValue = textFieldValue.copy(selection = TextRange(offset))
+      statusMessage = "Line $line"
+      modifiedTick++
+      onGotoLineHandled()
+    }
   }
 
   fun applyTextChange(newText: String, caret: Int = newText.length) {

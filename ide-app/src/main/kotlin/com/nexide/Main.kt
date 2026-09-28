@@ -40,6 +40,7 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
@@ -61,6 +62,8 @@ import com.nexide.platform.ui.dialog.CloseConfirmResult
 import com.nexide.platform.ui.dialog.ConfirmCloseDialog
 import com.nexide.platform.ui.projectview.ProjectView
 import com.nexide.platform.ui.run.RunToolWindow
+import com.nexide.platform.ui.search.FindInFilesPanel
+import com.nexide.platform.ui.search.SearchHit
 import com.nexide.platform.ui.tabs.EditorTabs
 import com.nexide.platform.ui.terminal.TerminalToolWindow
 import com.nexide.platform.util.Logger
@@ -100,6 +103,9 @@ fun main() {
     val processRunner = remember { ProcessRunner() }
     var runPanelVisible by mutableStateOf(false)
     var terminalVisible by mutableStateOf(false)
+    var findInFilesVisible by mutableStateOf(false)
+    // When opening a search hit, request go-to-line after editor opens
+    var pendingGoToLine by mutableStateOf<Pair<Editor, Int>?>(null)
 
     fun runGradle(task: String) {
       val dir = File(project.basePath)
@@ -179,6 +185,10 @@ fun main() {
             saveActive()
             true
           }
+          ctrlOrMeta && event.isShiftPressed && event.key == Key.F -> {
+            findInFilesVisible = true
+            true
+          }
           else -> false
         }
       }
@@ -213,6 +223,7 @@ fun main() {
           )
         }
         Menu("View", mnemonic = 'V') {
+          Item("Find in Files", onClick = { findInFilesVisible = true })
           Item("Terminal", onClick = { terminalVisible = true })
           Item("Run Tool Window", onClick = { runPanelVisible = true })
         }
@@ -229,6 +240,10 @@ fun main() {
         onRunPanelVisibleChange = { runPanelVisible = it },
         terminalVisible = terminalVisible,
         onTerminalVisibleChange = { terminalVisible = it },
+        findInFilesVisible = findInFilesVisible,
+        onFindInFilesVisibleChange = { findInFilesVisible = it },
+        pendingGoToLine = pendingGoToLine,
+        onPendingGoToLineHandled = { pendingGoToLine = null },
         onOpenFile = { file ->
           selectedFile = file
           val existing = openEditors.firstOrNull { it.file.path == file.path }
@@ -240,6 +255,20 @@ fun main() {
             activeEditor = editor
             Logger.info("Opened tab: ${file.path}")
           }
+        },
+        onOpenSearchHit = { hit: SearchHit ->
+          selectedFile = hit.file
+          val existing = openEditors.firstOrNull { it.file.path == hit.file.path }
+          val editor = if (existing != null) {
+            activeEditor = existing
+            existing
+          } else {
+            val created = Editor.create(hit.file)
+            openEditors.add(created)
+            activeEditor = created
+            created
+          }
+          pendingGoToLine = editor to hit.lineNumber
         },
         onSelectEditor = {
           activeEditor = it
@@ -285,7 +314,12 @@ fun NexIdeApp(
   onRunPanelVisibleChange: (Boolean) -> Unit,
   terminalVisible: Boolean,
   onTerminalVisibleChange: (Boolean) -> Unit,
+  findInFilesVisible: Boolean,
+  onFindInFilesVisibleChange: (Boolean) -> Unit,
+  pendingGoToLine: Pair<Editor, Int>?,
+  onPendingGoToLineHandled: () -> Unit,
   onOpenFile: (VirtualFile) -> Unit,
+  onOpenSearchHit: (SearchHit) -> Unit,
   onSelectEditor: (Editor) -> Unit,
   onRequestClose: (Editor) -> Unit,
   onCloseConfirm: (Editor, CloseConfirmResult) -> Unit
@@ -321,9 +355,12 @@ fun NexIdeApp(
 
             val editor = activeEditor
             if (editor != null) {
+              val gotoLine = pendingGoToLine?.takeIf { it.first === editor }?.second
               EditorView(
                 editor = editor,
-                modifier = Modifier.weight(1f).fillMaxSize()
+                modifier = Modifier.weight(1f).fillMaxSize(),
+                gotoLineRequest = gotoLine,
+                onGotoLineHandled = onPendingGoToLineHandled
               )
             } else {
               Box(
@@ -340,6 +377,16 @@ fun NexIdeApp(
           }
         }
 
+        if (findInFilesVisible) {
+          HorizontalDivider()
+          FindInFilesPanel(
+            root = project.baseDir,
+            visible = true,
+            onClose = { onFindInFilesVisibleChange(false) },
+            onOpenHit = onOpenSearchHit,
+            modifier = Modifier.fillMaxWidth()
+          )
+        }
         if (runPanelVisible) {
           HorizontalDivider()
           RunToolWindow(
