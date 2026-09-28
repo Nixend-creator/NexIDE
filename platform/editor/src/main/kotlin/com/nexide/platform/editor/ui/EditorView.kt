@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isCtrlPressed
@@ -56,6 +57,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nexide.platform.editor.Editor
+import com.nexide.platform.editor.syntax.SyntaxColors
+import com.nexide.platform.editor.syntax.SyntaxHighlighterRegistry
 import com.nexide.platform.plugin.filetype.FileTypeRegistry
 
 private val EDITOR_FONT_SIZE = 14.sp
@@ -63,7 +66,7 @@ private val EDITOR_LINE_HEIGHT = 20.sp
 
 /**
  * Basic text editor view backed by an [Editor] instance.
- * Supports Ctrl+S / Cmd+S to save and shows line numbers.
+ * Supports save, undo/redo, line numbers and basic syntax highlighting.
  */
 @Composable
 fun EditorView(
@@ -113,10 +116,23 @@ fun EditorView(
   }
 
   val scrollState = rememberScrollState()
+  val language = FileTypeRegistry.getLanguageByFileName(editor.file.name)
+  val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+  val syntaxColors = if (isDark) SyntaxColors.Darcula else SyntaxColors.Light
+  val highlightedText = remember(text, language, isDark) {
+    SyntaxHighlighterRegistry.highlightAsAnnotatedString(text, language, syntaxColors)
+  }
+
   val textStyle = TextStyle(
     fontFamily = FontFamily.Monospace,
     fontSize = EDITOR_FONT_SIZE,
-    color = MaterialTheme.colorScheme.onSurface,
+    color = Color.Transparent, // real colors come from highlighted overlay
+    lineHeight = EDITOR_LINE_HEIGHT
+  )
+  val highlightStyle = TextStyle(
+    fontFamily = FontFamily.Monospace,
+    fontSize = EDITOR_FONT_SIZE,
+    color = syntaxColors.default,
     lineHeight = EDITOR_LINE_HEIGHT
   )
   val gutterStyle = TextStyle(
@@ -161,7 +177,6 @@ fun EditorView(
       @Suppress("UNUSED_EXPRESSION")
       modifiedTick
 
-      val language = FileTypeRegistry.getLanguageByFileName(editor.file.name)
       val status = buildString {
         append(editor.file.name)
         if (editor.isModified) append(" *")
@@ -214,7 +229,7 @@ fun EditorView(
         )
       }
 
-      // Text field (shares scroll with gutter via same scrollState — limited sync for MVP)
+      // Text field with syntax highlight overlay
       BasicTextField(
         value = text,
         onValueChange = onTextChange,
@@ -230,7 +245,12 @@ fun EditorView(
             if (text.isEmpty()) {
               Text(
                 text = "// Start typing...",
-                style = textStyle.copy(color = Color.Gray)
+                style = highlightStyle.copy(color = Color.Gray)
+              )
+            } else {
+              Text(
+                text = highlightedText,
+                style = highlightStyle
               )
             }
             innerTextField()

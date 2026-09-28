@@ -23,6 +23,7 @@ Current capabilities:
 - Line numbers in editor
 - Undo / Redo (Ctrl+Z / Ctrl+Y)
 - Language support (FileType EP + LanguageParser EP + PSI)
+- Basic syntax highlighting (Kotlin / Java keywords, strings, comments)
 
 ## Tech Stack
 
@@ -79,8 +80,9 @@ We follow IntelliJ Platform inspired coding standards:
 9. ✅ Line numbers in editor
 10. ✅ Undo / Redo
 11. ✅ Language support (FileType + LanguageParser EP)
-12. Debugger integration
-13. ...
+12. ✅ Basic syntax highlighting (Kotlin / Java)
+13. Debugger integration
+14. ...
 
 ## Contributing
 
