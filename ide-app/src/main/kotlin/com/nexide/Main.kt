@@ -62,6 +62,7 @@ import com.nexide.platform.ui.dialog.ConfirmCloseDialog
 import com.nexide.platform.ui.projectview.ProjectView
 import com.nexide.platform.ui.run.RunToolWindow
 import com.nexide.platform.ui.tabs.EditorTabs
+import com.nexide.platform.ui.terminal.TerminalToolWindow
 import com.nexide.platform.util.Logger
 import java.io.File
 import javax.swing.JFileChooser
@@ -98,6 +99,7 @@ fun main() {
     var pendingCloseEditor by mutableStateOf<Editor?>(null)
     val processRunner = remember { ProcessRunner() }
     var runPanelVisible by mutableStateOf(false)
+    var terminalVisible by mutableStateOf(false)
 
     fun runGradle(task: String) {
       val dir = File(project.basePath)
@@ -210,6 +212,10 @@ fun main() {
             onClick = { runPanelVisible = true }
           )
         }
+        Menu("View", mnemonic = 'V') {
+          Item("Terminal", onClick = { terminalVisible = true })
+          Item("Run Tool Window", onClick = { runPanelVisible = true })
+        }
       }
 
       NexIdeApp(
@@ -221,6 +227,8 @@ fun main() {
         processRunner = processRunner,
         runPanelVisible = runPanelVisible,
         onRunPanelVisibleChange = { runPanelVisible = it },
+        terminalVisible = terminalVisible,
+        onTerminalVisibleChange = { terminalVisible = it },
         onOpenFile = { file ->
           selectedFile = file
           val existing = openEditors.firstOrNull { it.file.path == file.path }
@@ -275,6 +283,8 @@ fun NexIdeApp(
   processRunner: ProcessRunner,
   runPanelVisible: Boolean,
   onRunPanelVisibleChange: (Boolean) -> Unit,
+  terminalVisible: Boolean,
+  onTerminalVisibleChange: (Boolean) -> Unit,
   onOpenFile: (VirtualFile) -> Unit,
   onSelectEditor: (Editor) -> Unit,
   onRequestClose: (Editor) -> Unit,
@@ -336,6 +346,15 @@ fun NexIdeApp(
             runner = processRunner,
             visible = true,
             onClose = { onRunPanelVisibleChange(false) },
+            modifier = Modifier.fillMaxWidth()
+          )
+        }
+        if (terminalVisible) {
+          HorizontalDivider()
+          TerminalToolWindow(
+            projectRoot = project.basePath,
+            visible = true,
+            onClose = { onTerminalVisibleChange(false) },
             modifier = Modifier.fillMaxWidth()
           )
         }
