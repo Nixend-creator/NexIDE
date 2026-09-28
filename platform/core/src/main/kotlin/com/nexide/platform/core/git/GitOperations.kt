@@ -95,6 +95,48 @@ object GitOperations {
     return if (result.success) result.output.trim().ifEmpty { null } else null
   }
 
+  /**
+   * Returns unified diff for [relativePath].
+   * If [staged] — index vs HEAD; otherwise working tree vs index.
+   * For untracked files returns a synthetic "new file" diff.
+   */
+  fun diff(projectDir: File, relativePath: String, staged: Boolean = false): GitCommandResult {
+    val root = GitStatusService.findGitRoot(projectDir)
+      ?: return GitCommandResult(false, "Not a git repository", -1)
+
+    if (staged) {
+      return runGit(root, listOf("diff", "--staged", "--", relativePath))
+    }
+
+    val unstaged = runGit(root, listOf("diff", "--", relativePath))
+    if (unstaged.success && unstaged.output.isNotBlank()) {
+      return unstaged
+    }
+
+    val file = File(root, relativePath)
+    if (file.isFile) {
+      val content = try {
+        file.readText()
+      } catch (e: Exception) {
+        return GitCommandResult(false, e.message ?: "Cannot read file", -1)
+      }
+      val synthetic = buildString {
+        append("diff --git a/$relativePath b/$relativePath\n")
+        append("new file mode 100644\n")
+        append("--- /dev/null\n")
+        append("+++ b/$relativePath\n")
+        for (line in content.lineSequence()) {
+          append("+")
+          append(line)
+          append("\n")
+        }
+      }
+      return GitCommandResult(true, synthetic, 0)
+    }
+
+    return unstaged
+  }
+
   private fun runGit(repoRoot: File, args: List<String>): GitCommandResult {
     return try {
       val process = ProcessBuilder(listOf("git") + args)

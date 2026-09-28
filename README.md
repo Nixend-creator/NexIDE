@@ -104,7 +104,7 @@ We follow IntelliJ Platform inspired coding standards:
 21. ✅ Terminal
 22. ✅ Find in Files (Ctrl/Cmd+Shift+F)
 23. ✅ Git status in Project View
-24. ✅ Git stage / commit tool window
+24. ✅ Git stage / commit / diff tool window
 25. Debugger integration
 26. ...
 
