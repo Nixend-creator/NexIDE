@@ -60,6 +60,7 @@ import com.nexide.platform.plugin.example.CoreFileTypesPlugin
 import com.nexide.platform.plugin.example.FILE_TYPE_EP
 import com.nexide.platform.ui.dialog.CloseConfirmResult
 import com.nexide.platform.ui.dialog.ConfirmCloseDialog
+import com.nexide.platform.ui.git.GitToolWindow
 import com.nexide.platform.ui.projectview.ProjectView
 import com.nexide.platform.ui.run.RunToolWindow
 import com.nexide.platform.ui.search.FindInFilesPanel
@@ -103,6 +104,7 @@ fun main() {
     val processRunner = remember { ProcessRunner() }
     var runPanelVisible by mutableStateOf(false)
     var terminalVisible by mutableStateOf(false)
+    var gitPanelVisible by mutableStateOf(false)
     var findInFilesVisible by mutableStateOf(false)
     // When opening a search hit, request go-to-line after editor opens
     var pendingGoToLine by mutableStateOf<Pair<Editor, Int>?>(null)
@@ -224,6 +226,7 @@ fun main() {
         }
         Menu("View", mnemonic = 'V') {
           Item("Find in Files", onClick = { findInFilesVisible = true })
+          Item("Git", onClick = { gitPanelVisible = true })
           Item("Terminal", onClick = { terminalVisible = true })
           Item("Run Tool Window", onClick = { runPanelVisible = true })
         }
@@ -240,6 +243,8 @@ fun main() {
         onRunPanelVisibleChange = { runPanelVisible = it },
         terminalVisible = terminalVisible,
         onTerminalVisibleChange = { terminalVisible = it },
+        gitPanelVisible = gitPanelVisible,
+        onGitPanelVisibleChange = { gitPanelVisible = it },
         findInFilesVisible = findInFilesVisible,
         onFindInFilesVisibleChange = { findInFilesVisible = it },
         pendingGoToLine = pendingGoToLine,
@@ -314,6 +319,8 @@ fun NexIdeApp(
   onRunPanelVisibleChange: (Boolean) -> Unit,
   terminalVisible: Boolean,
   onTerminalVisibleChange: (Boolean) -> Unit,
+  gitPanelVisible: Boolean,
+  onGitPanelVisibleChange: (Boolean) -> Unit,
   findInFilesVisible: Boolean,
   onFindInFilesVisibleChange: (Boolean) -> Unit,
   pendingGoToLine: Pair<Editor, Int>?,
@@ -393,6 +400,15 @@ fun NexIdeApp(
             runner = processRunner,
             visible = true,
             onClose = { onRunPanelVisibleChange(false) },
+            modifier = Modifier.fillMaxWidth()
+          )
+        }
+        if (gitPanelVisible) {
+          HorizontalDivider()
+          GitToolWindow(
+            projectRoot = project.basePath,
+            visible = true,
+            onClose = { onGitPanelVisibleChange(false) },
             modifier = Modifier.fillMaxWidth()
           )
         }
