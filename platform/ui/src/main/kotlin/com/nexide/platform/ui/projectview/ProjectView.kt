@@ -30,20 +30,27 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import com.nexide.platform.core.git.GitFileStatus
+import com.nexide.platform.core.git.GitStatusService
+import com.nexide.platform.core.git.GitStatusSnapshot
 import com.nexide.platform.core.vfs.VirtualFile
+import java.io.File
 
 /**
- * Project view (file tree) with expand/collapse, backed by VFS.
+ * Project view (file tree) with expand/collapse and Git status badges.
  */
 @Composable
 fun ProjectView(
@@ -52,22 +59,41 @@ fun ProjectView(
   onFileSelected: (VirtualFile) -> Unit,
   modifier: Modifier = Modifier
 ) {
-  // Paths of expanded directories
   var expandedPaths by remember { mutableStateOf(setOf<String>()) }
+  var gitSnapshot by remember { mutableStateOf(GitStatusSnapshot.EMPTY) }
+  var refreshTick by remember { mutableStateOf(0) }
+
+  // Load git status when root changes or user refreshes
+  LaunchedEffect(root?.path, refreshTick) {
+    val path = root?.path
+    gitSnapshot = if (path != null) {
+      GitStatusService.loadStatus(File(path))
+    } else {
+      GitStatusSnapshot.EMPTY
+    }
+  }
 
   Column(
     modifier = modifier
       .fillMaxHeight()
       .background(MaterialTheme.colorScheme.surfaceVariant)
   ) {
-    Text(
-      text = "Project",
-      style = MaterialTheme.typography.titleSmall,
-      fontWeight = FontWeight.SemiBold,
+    Row(
       modifier = Modifier
         .fillMaxWidth()
-        .padding(horizontal = 12.dp, vertical = 10.dp)
-    )
+        .padding(horizontal = 8.dp, vertical = 4.dp),
+      verticalAlignment = Alignment.CenterVertically
+    ) {
+      Text(
+        text = "Project",
+        style = MaterialTheme.typography.titleSmall,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.weight(1f).padding(start = 4.dp)
+      )
+      TextButton(onClick = { refreshTick++ }) {
+        Text("↻", style = MaterialTheme.typography.labelLarge)
+      }
+    }
 
     if (root == null || !root.isValid) {
       Text(
@@ -79,7 +105,6 @@ fun ProjectView(
       return
     }
 
-    // Auto-expand root's immediate children on first load
     if (expandedPaths.isEmpty()) {
       expandedPaths = setOf(root.path)
     }
@@ -91,10 +116,12 @@ fun ProjectView(
     LazyColumn(modifier = Modifier.fillMaxSize()) {
       items(entries, key = { it.file.path }) { entry ->
         val isExpanded = entry.file.path in expandedPaths
+        val status = gitSnapshot.statusFor(entry.file.path)
         FileTreeItem(
           entry = entry,
           isSelected = selectedFile?.path == entry.file.path,
           isExpanded = isExpanded,
+          gitStatus = status,
           onClick = {
             if (entry.file.isDirectory) {
               expandedPaths = if (isExpanded) {
@@ -118,9 +145,6 @@ private data class TreeEntry(
   val hasChildren: Boolean
 )
 
-/**
- * Builds a flat list of currently visible tree nodes based on expanded state.
- */
 private fun buildVisibleEntries(
   root: VirtualFile,
   expandedPaths: Set<String>
@@ -146,7 +170,6 @@ private fun buildVisibleEntries(
     }
   }
 
-  // Show root itself as top-level entry, then its children if expanded
   val rootHasChildren = root.getChildren().any { c ->
     !c.name.startsWith(".") && c.name !in SKIP_DIRS
   }
@@ -165,6 +188,7 @@ private fun FileTreeItem(
   entry: TreeEntry,
   isSelected: Boolean,
   isExpanded: Boolean,
+  gitStatus: GitFileStatus,
   onClick: () -> Unit
 ) {
   val background = if (isSelected) {
@@ -185,6 +209,23 @@ private fun FileTreeItem(
     entry.file.name.endsWith(".kt") || entry.file.name.endsWith(".kts") -> "🅺"
     entry.file.name.endsWith(".java") -> "🅹"
     else -> "📄"
+  }
+
+  val (badge, badgeColor) = when (gitStatus) {
+    GitFileStatus.MODIFIED -> "M" to Color(0xFFE2C08D)
+    GitFileStatus.ADDED -> "A" to Color(0xFF89D185)
+    GitFileStatus.UNTRACKED -> "?" to Color(0xFF89D185)
+    GitFileStatus.DELETED -> "D" to Color(0xFFF14C4C)
+    GitFileStatus.RENAMED -> "R" to Color(0xFF73C1DE)
+    GitFileStatus.CLEAN -> "" to Color.Transparent
+  }
+
+  val nameColor = when {
+    isSelected -> MaterialTheme.colorScheme.onPrimaryContainer
+    gitStatus == GitFileStatus.MODIFIED -> Color(0xFFE2C08D)
+    gitStatus == GitFileStatus.ADDED || gitStatus == GitFileStatus.UNTRACKED -> Color(0xFF89D185)
+    gitStatus == GitFileStatus.DELETED -> Color(0xFFF14C4C)
+    else -> MaterialTheme.colorScheme.onSurface
   }
 
   Row(
@@ -208,11 +249,16 @@ private fun FileTreeItem(
       style = MaterialTheme.typography.bodyMedium,
       maxLines = 1,
       overflow = TextOverflow.Ellipsis,
-      color = if (isSelected) {
-        MaterialTheme.colorScheme.onPrimaryContainer
-      } else {
-        MaterialTheme.colorScheme.onSurface
-      }
+      color = nameColor,
+      modifier = Modifier.weight(1f)
     )
+    if (badge.isNotEmpty()) {
+      Text(
+        text = badge,
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.Bold,
+        color = badgeColor
+      )
+    }
   }
 }

@@ -34,6 +34,7 @@ Current capabilities:
 - Run: Gradle build/test/tasks + output panel + Stop
 - Terminal (commands in project dir, cd, history)
 - Find in Files (Ctrl/Cmd+Shift+F)
+- Git status badges in Project View (M/A/?/D + refresh)
 
 ## Tech Stack
 
@@ -101,8 +102,9 @@ We follow IntelliJ Platform inspired coding standards:
 20. ✅ Run (Gradle + output panel)
 21. ✅ Terminal
 22. ✅ Find in Files (Ctrl/Cmd+Shift+F)
-23. Debugger integration
-24. ...
+23. ✅ Git status in Project View
+24. Debugger integration
+25. ...
 
 ## Contributing
 
