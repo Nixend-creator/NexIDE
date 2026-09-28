@@ -21,6 +21,7 @@ Current capabilities:
 - File save from Editor (Ctrl/Cmd+S + button)
 - Editor tabs (multiple open files)
 - Line numbers in editor
+- Undo / Redo (Ctrl+Z / Ctrl+Y)
 
 ## Tech Stack
 
@@ -75,9 +76,10 @@ We follow IntelliJ Platform inspired coding standards:
 7. ✅ File save (VFS write + Ctrl/Cmd+S)
 8. ✅ Editor tabs
 9. ✅ Line numbers in editor
-10. Language support (Kotlin / Java)
-11. Debugger integration
-12. ...
+10. ✅ Undo / Redo
+11. Language support (Kotlin / Java)
+12. Debugger integration
+13. ...
 
 ## Contributing
 

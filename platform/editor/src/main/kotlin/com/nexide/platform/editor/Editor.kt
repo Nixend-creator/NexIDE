@@ -28,6 +28,7 @@ class Editor(
   initialText: String = ""
 ) {
   val document: Document = Document(initialText)
+  val undoManager: UndoManager = UndoManager(document)
 
   private var myModified = false
   private var myDisposed = false

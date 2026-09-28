@@ -46,6 +46,7 @@ import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
@@ -78,9 +79,26 @@ fun EditorView(
     modifiedTick++
   }
 
+  fun performUndo() {
+    if (editor.undoManager.undo()) {
+      text = editor.document.getText()
+      statusMessage = "Undo"
+      modifiedTick++
+    }
+  }
+
+  fun performRedo() {
+    if (editor.undoManager.redo()) {
+      text = editor.document.getText()
+      statusMessage = "Redo"
+      modifiedTick++
+    }
+  }
+
   val onTextChange: (String) -> Unit = { newText ->
     text = newText
     editor.document.setText(newText)
+    editor.undoManager.recordChange()
     statusMessage = null
     modifiedTick++
   }
@@ -112,14 +130,22 @@ fun EditorView(
     modifier = modifier
       .fillMaxSize()
       .onPreviewKeyEvent { event ->
-        if (event.type == KeyEventType.KeyDown &&
-          event.key == Key.S &&
-          (event.isCtrlPressed || event.isMetaPressed)
-        ) {
-          performSave()
-          true
-        } else {
-          false
+        if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+        val ctrlOrMeta = event.isCtrlPressed || event.isMetaPressed
+        when {
+          ctrlOrMeta && event.key == Key.S -> {
+            performSave()
+            true
+          }
+          ctrlOrMeta && event.key == Key.Z && !event.isShiftPressed -> {
+            performUndo()
+            true
+          }
+          ctrlOrMeta && (event.key == Key.Y || (event.key == Key.Z && event.isShiftPressed)) -> {
+            performRedo()
+            true
+          }
+          else -> false
         }
       }
   ) {
