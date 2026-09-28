@@ -51,7 +51,9 @@ import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
+import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -76,6 +78,14 @@ fun EditorView(
   var text by remember(editor) { mutableStateOf(editor.document.getText()) }
   var statusMessage by remember { mutableStateOf<String?>(null) }
   var modifiedTick by remember { mutableStateOf(0) }
+
+  var findVisible by remember { mutableStateOf(false) }
+  var findQuery by remember { mutableStateOf("") }
+  var findIndex by remember { mutableStateOf(0) }
+  val findMatches = remember(text, findQuery) { findMatches(text, findQuery) }
+  if (findIndex >= findMatches.size && findMatches.isNotEmpty()) {
+    findIndex = 0
+  }
 
   fun performSave() {
     val ok = editor.save()
@@ -119,8 +129,26 @@ fun EditorView(
   val language = FileTypeRegistry.getLanguageByFileName(editor.file.name)
   val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
   val syntaxColors = if (isDark) SyntaxColors.Darcula else SyntaxColors.Light
-  val highlightedText = remember(text, language, isDark) {
-    SyntaxHighlighterRegistry.highlightAsAnnotatedString(text, language, syntaxColors)
+  val highlightedText = remember(text, language, isDark, findQuery, findIndex, findMatches) {
+    val base = SyntaxHighlighterRegistry.highlightAsAnnotatedString(text, language, syntaxColors)
+    if (findQuery.isEmpty() || findMatches.isEmpty()) {
+      base
+    } else {
+      // Overlay find match backgrounds on top of syntax colors
+      buildAnnotatedString {
+        append(base)
+        val matchLen = findQuery.length
+        findMatches.forEachIndexed { i, start ->
+          val end = (start + matchLen).coerceAtMost(text.length)
+          val bg = if (i == findIndex) {
+            Color(0x88FF9800) // current match — stronger orange
+          } else {
+            Color(0x55FFEB3B) // other matches — yellow
+          }
+          addStyle(SpanStyle(background = bg), start, end)
+        }
+      }
+    }
   }
 
   val textStyle = TextStyle(
@@ -152,6 +180,14 @@ fun EditorView(
         when {
           ctrlOrMeta && event.key == Key.S -> {
             performSave()
+            true
+          }
+          ctrlOrMeta && event.key == Key.F -> {
+            findVisible = true
+            true
+          }
+          event.key == Key.Escape && findVisible -> {
+            findVisible = false
             true
           }
           ctrlOrMeta && event.key == Key.Z && !event.isShiftPressed -> {
@@ -205,6 +241,29 @@ fun EditorView(
       } else {
         Spacer(modifier = Modifier.width(8.dp))
       }
+    }
+
+    if (findVisible) {
+      FindBar(
+        query = findQuery,
+        onQueryChange = {
+          findQuery = it
+          findIndex = 0
+        },
+        matchCount = findMatches.size,
+        currentIndex = findIndex.coerceAtMost((findMatches.size - 1).coerceAtLeast(0)),
+        onNext = {
+          if (findMatches.isNotEmpty()) {
+            findIndex = (findIndex + 1) % findMatches.size
+          }
+        },
+        onPrev = {
+          if (findMatches.isNotEmpty()) {
+            findIndex = if (findIndex <= 0) findMatches.lastIndex else findIndex - 1
+          }
+        },
+        onClose = { findVisible = false }
+      )
     }
 
     // Editor area: gutter + text

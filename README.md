@@ -24,6 +24,7 @@ Current capabilities:
 - Undo / Redo (Ctrl+Z / Ctrl+Y)
 - Language support (FileType EP + LanguageParser EP + PSI)
 - Basic syntax highlighting (Kotlin / Java keywords, strings, comments)
+- Find in file (Ctrl/Cmd+F)
 
 ## Tech Stack
 
@@ -81,8 +82,9 @@ We follow IntelliJ Platform inspired coding standards:
 10. ✅ Undo / Redo
 11. ✅ Language support (FileType + LanguageParser EP)
 12. ✅ Basic syntax highlighting (Kotlin / Java)
-13. Debugger integration
-14. ...
+13. ✅ Find in file (Ctrl/Cmd+F)
+14. Debugger integration
+15. ...
 
 ## Contributing
 
