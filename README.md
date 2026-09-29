@@ -37,6 +37,7 @@ Current capabilities:
 - Git status badges in Project View (M/A/?/D + refresh)
 - Git tool window: stage / unstage / commit / diff / push / pull
 - Recent projects (File → Open Recent)
+- Structure view (classes / functions / properties)
 
 ## Tech Stack
 
