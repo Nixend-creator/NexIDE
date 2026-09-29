@@ -46,6 +46,7 @@ Current capabilities:
 - Debug session (JDWP launch, Debug tool window)
 - JDI attach / Install BPs / Resume on breakpoint
 - Run Configurations (Gradle / Application)
+- Problems panel (build errors, click to navigate)
 
 ## Tech Stack
 
