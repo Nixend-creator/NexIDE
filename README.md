@@ -42,6 +42,7 @@ Current capabilities:
 - Welcome screen with recent projects
 - Settings (font size, tab size, line numbers)
 - Tab / Shift+Tab indent with configured tab size
+- Breakpoints (gutter toggle + tool window)
 
 ## Tech Stack
 
