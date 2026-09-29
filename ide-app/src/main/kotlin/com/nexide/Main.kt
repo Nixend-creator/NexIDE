@@ -53,6 +53,8 @@ import com.nexide.platform.core.Project
 import com.nexide.platform.core.RecentProjects
 import com.nexide.platform.core.run.GradleRunSupport
 import com.nexide.platform.core.run.ProcessRunner
+import com.nexide.platform.core.run.RunConfiguration
+import com.nexide.platform.core.run.RunConfigurationManager
 import com.nexide.platform.core.vfs.VirtualFile
 import com.nexide.platform.editor.Editor
 import com.nexide.platform.editor.ui.EditorView
@@ -64,6 +66,7 @@ import com.nexide.platform.ui.dialog.ConfirmCloseDialog
 import com.nexide.platform.plugin.filetype.FileTypeRegistry
 import com.nexide.platform.ui.git.GitToolWindow
 import com.nexide.platform.ui.projectview.ProjectView
+import com.nexide.platform.ui.run.RunConfigDialog
 import com.nexide.platform.ui.run.RunToolWindow
 import com.nexide.platform.ui.search.FindInFilesPanel
 import com.nexide.platform.ui.search.SearchHit
@@ -123,8 +126,13 @@ fun main() {
     var settingsVisible by mutableStateOf(false)
     var settingsRevision by mutableStateOf(0)
     var breakpointsVisible by mutableStateOf(false)
+    var runConfigDialogVisible by mutableStateOf(false)
     // When opening a search hit, request go-to-line after editor opens
     var pendingGoToLine by mutableStateOf<Pair<Editor, Int>?>(null)
+
+    val runConfigManager = remember { RunConfigurationManager.getInstance() }
+    // Seed defaults for current project
+    runConfigManager.ensureDefaults(File(project.basePath))
 
     fun runGradle(task: String) {
       val dir = File(project.basePath)
@@ -136,6 +144,25 @@ fun main() {
       val gradle = GradleRunSupport.findGradleCommand(dir) ?: return
       runPanelVisible = true
       processRunner.start(gradle + task, dir)
+    }
+
+    fun runConfiguration(config: RunConfiguration, debug: Boolean = false) {
+      val dir = File(config.workingDir.ifBlank { project.basePath })
+      val command = runConfigManager.resolveCommand(
+        config.copy(workingDir = dir.absolutePath, debug = debug)
+      )
+      if (command == null) {
+        Logger.warn("Cannot resolve run configuration: ${config.name}")
+        return
+      }
+      if (debug) {
+        debugPanelVisible = true
+        debugSessionManager.startDebug(command, dir)
+      } else {
+        runPanelVisible = true
+        processRunner.start(command, dir)
+      }
+      Logger.info("${if (debug) "Debug" else "Run"}: ${config.name} → ${command.joinToString(" ")}")
     }
 
     fun doCloseEditor(editor: Editor) {
@@ -162,6 +189,8 @@ fun main() {
       selectedFile = null
       activeEditor = null
       RecentProjects.add(path)
+      runConfigManager.clear()
+      runConfigManager.ensureDefaults(File(path))
       Logger.info("Opened project: $path")
     }
 
@@ -249,24 +278,25 @@ fun main() {
           })
         }
         Menu("Run", mnemonic = 'R') {
+          Item(
+            "Run '${runConfigManager.selected?.name ?: "…"}'",
+            enabled = runConfigManager.selected != null,
+            onClick = {
+              runConfigManager.selected?.let { runConfiguration(it, debug = false) }
+            }
+          )
+          Item(
+            "Debug '${runConfigManager.selected?.name ?: "…"}'",
+            enabled = runConfigManager.selected != null,
+            onClick = {
+              runConfigManager.selected?.let { runConfiguration(it, debug = true) }
+            }
+          )
+          Item("Edit Configurations…", onClick = { runConfigDialogVisible = true })
+          Separator()
           Item("Gradle: build", onClick = { runGradle("build") })
           Item("Gradle: test", onClick = { runGradle("test") })
           Item("Gradle: tasks", onClick = { runGradle("tasks") })
-          Separator()
-          Item(
-            "Debug Gradle: build",
-            onClick = {
-              debugPanelVisible = true
-              debugSessionManager.startGradleDebug(File(project.basePath), "build")
-            }
-          )
-          Item(
-            "Debug Gradle: test",
-            onClick = {
-              debugPanelVisible = true
-              debugSessionManager.startGradleDebug(File(project.basePath), "test")
-            }
-          )
           Separator()
           Item(
             "Toggle Breakpoint",
@@ -313,6 +343,21 @@ fun main() {
         SettingsDialog(
           onDismiss = { settingsVisible = false },
           onApplied = { settingsRevision++ }
+        )
+      }
+      if (runConfigDialogVisible) {
+        RunConfigDialog(
+          projectPath = project.basePath,
+          manager = runConfigManager,
+          onDismiss = { runConfigDialogVisible = false },
+          onRun = { cfg ->
+            runConfigDialogVisible = false
+            runConfiguration(cfg, debug = false)
+          },
+          onDebug = { cfg ->
+            runConfigDialogVisible = false
+            runConfiguration(cfg, debug = true)
+          }
         )
       }
 
