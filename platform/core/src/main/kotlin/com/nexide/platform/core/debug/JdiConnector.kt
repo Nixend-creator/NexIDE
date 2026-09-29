@@ -57,7 +57,11 @@ data class SuspendedThreadInfo(
   val threadId: Long,
   val locationDescription: String,
   val frames: List<String>,
-  val variables: List<DebugVariable> = emptyList()
+  val variables: List<DebugVariable> = emptyList(),
+  /** Simple source file name, e.g. Main.kt */
+  val sourceName: String? = null,
+  /** 1-based line number in source */
+  val lineNumber: Int? = null
 )
 
 /**
@@ -363,12 +367,24 @@ class JdiConnector {
       Logger.warn("collectVariables: ${e.message}")
       emptyList()
     }
+    val sourceName = try {
+      loc.sourceName()
+    } catch (_: Exception) {
+      null
+    }
+    val lineNumber = try {
+      loc.lineNumber().takeIf { it > 0 }
+    } catch (_: Exception) {
+      null
+    }
     return SuspendedThreadInfo(
       threadName = thread.name(),
       threadId = thread.uniqueID(),
       locationDescription = formatLocation(loc),
       frames = frames,
-      variables = variables
+      variables = variables,
+      sourceName = sourceName,
+      lineNumber = lineNumber
     )
   }
 

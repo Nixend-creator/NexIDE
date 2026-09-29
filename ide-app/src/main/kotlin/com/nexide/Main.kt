@@ -84,6 +84,9 @@ import com.nexide.platform.ui.terminal.TerminalToolWindow
 import com.nexide.platform.core.debug.BreakpointManager
 import com.nexide.platform.core.debug.DebugSessionManager
 import com.nexide.platform.core.debug.JdiConnector
+import com.nexide.platform.core.debug.JdiListener
+import com.nexide.platform.core.debug.SuspendedThreadInfo
+import javax.swing.SwingUtilities
 import com.nexide.platform.ui.debug.BreakpointsToolWindow
 import com.nexide.platform.ui.debug.DebugToolWindow
 import com.nexide.platform.ui.settings.SettingsDialog
@@ -196,6 +199,58 @@ fun main() {
       processRunner.start(gradle + task, dir)
     }
 
+    fun jumpToSource(info: SuspendedThreadInfo) {
+      val name = info.sourceName ?: return
+      val line = info.lineNumber ?: return
+      val root = File(project.basePath)
+      val match = root.walkTopDown()
+        .onEnter { d -> d.name !in setOf(".git", ".gradle", "build", "out", "node_modules") }
+        .firstOrNull { it.isFile && it.name == name }
+        ?: return
+      val file = LocalFileSystem.getInstance().findFileByPath(match.absolutePath) ?: return
+      selectedFile = file
+      val existing = openEditors.firstOrNull { it.file.path == file.path }
+      val editor = if (existing != null) {
+        activeEditor = existing
+        existing
+      } else {
+        val created = Editor.create(file)
+        openEditors.add(created)
+        activeEditor = created
+        created
+      }
+      pendingGoToLine = editor to line
+      Logger.info("Debug jump: ${match.name}:$line")
+    }
+
+    fun autoAttachAndInstallBps() {
+      Thread({
+        // Wait for JDWP to come up
+        var attached = false
+        repeat(20) {
+          if (jdiConnector.isAttached) {
+            attached = true
+            return@repeat
+          }
+          Thread.sleep(500)
+          if (jdiConnector.attach(port = debugSessionManager.debugPort)) {
+            attached = true
+            return@repeat
+          }
+        }
+        if (!attached) {
+          Logger.warn("Auto-attach failed — use Attach manually")
+          return@Thread
+        }
+        Thread.sleep(300)
+        val n = jdiConnector.installBreakpoints(BreakpointManager.getInstance().getAll())
+        Logger.info("Auto-install breakpoints: $n")
+      }, "nexide-auto-attach").apply {
+        isDaemon = true
+        start()
+      }
+    }
+
     fun runConfiguration(config: RunConfiguration, debug: Boolean = false) {
       val dir = File(config.workingDir.ifBlank { project.basePath })
       val command = runConfigManager.resolveCommand(
@@ -207,7 +262,8 @@ fun main() {
       }
       if (debug) {
         debugPanelVisible = true
-        debugSessionManager.startDebug(command, dir)
+        val ok = debugSessionManager.startDebug(command, dir)
+        if (ok) autoAttachAndInstallBps()
       } else {
         runPanelVisible = true
         processRunner.start(command, dir)
@@ -246,6 +302,19 @@ fun main() {
 
     // Record the default project as recent on startup
     RecentProjects.add(project.basePath)
+
+    // Jump editor to source when JDI hits a breakpoint / step
+    val jumpListener = remember {
+      object : JdiListener {
+        override fun onBreakpointHit(info: SuspendedThreadInfo) {
+          SwingUtilities.invokeLater { jumpToSource(info) }
+        }
+      }
+    }
+    androidx.compose.runtime.DisposableEffect(jdiConnector) {
+      jdiConnector.addListener(jumpListener)
+      onDispose { jdiConnector.removeListener(jumpListener) }
+    }
 
     fun chooseAndOpenProject() {
       try {
