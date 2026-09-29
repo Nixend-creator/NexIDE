@@ -70,6 +70,7 @@ import com.nexide.platform.ui.search.SearchHit
 import com.nexide.platform.ui.structure.StructureToolWindow
 import com.nexide.platform.ui.tabs.EditorTabs
 import com.nexide.platform.ui.terminal.TerminalToolWindow
+import com.nexide.platform.ui.welcome.WelcomeScreen
 import com.nexide.platform.util.Logger
 import java.io.File
 import javax.swing.JFileChooser
@@ -306,6 +307,8 @@ fun main() {
           activeEditor = editor
           pendingGoToLine = editor to line
         },
+        onOpenProject = { chooseAndOpenProject() },
+        onOpenRecent = { path -> openProjectFromPath(path) },
         onSelectEditor = {
           activeEditor = it
           selectedFile = it.file
@@ -361,6 +364,8 @@ fun NexIdeApp(
   onOpenFile: (VirtualFile) -> Unit,
   onOpenSearchHit: (SearchHit) -> Unit,
   onNavigateToLine: (Editor, Int) -> Unit,
+  onOpenProject: () -> Unit,
+  onOpenRecent: (String) -> Unit,
   onSelectEditor: (Editor) -> Unit,
   onRequestClose: (Editor) -> Unit,
   onCloseConfirm: (Editor, CloseConfirmResult) -> Unit
@@ -405,16 +410,12 @@ fun NexIdeApp(
                 projectRootPath = project.basePath
               )
             } else {
-              Box(
-                modifier = Modifier.weight(1f).fillMaxSize(),
-                contentAlignment = Alignment.Center
-              ) {
-                Text(
-                  text = "Open a project (File → Open Project) or select a file",
-                  style = MaterialTheme.typography.bodyLarge,
-                  color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-              }
+              WelcomeScreen(
+                currentProjectPath = project.basePath,
+                onOpenProject = onOpenProject,
+                onOpenRecent = onOpenRecent,
+                modifier = Modifier.weight(1f).fillMaxSize()
+              )
             }
           }
 
