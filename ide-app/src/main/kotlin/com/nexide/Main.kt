@@ -50,6 +50,7 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.nexide.platform.core.Application
 import com.nexide.platform.core.Project
+import com.nexide.platform.core.RecentProjects
 import com.nexide.platform.core.run.GradleRunSupport
 import com.nexide.platform.core.run.ProcessRunner
 import com.nexide.platform.core.vfs.VirtualFile
@@ -144,8 +145,12 @@ fun main() {
       project = application.openProject(path)
       selectedFile = null
       activeEditor = null
+      RecentProjects.add(path)
       Logger.info("Opened project: $path")
     }
+
+    // Record the default project as recent on startup
+    RecentProjects.add(project.basePath)
 
     fun chooseAndOpenProject() {
       try {
@@ -198,6 +203,22 @@ fun main() {
       MenuBar {
         Menu("File", mnemonic = 'F') {
           Item("Open Project…", onClick = { chooseAndOpenProject() }, shortcut = null)
+          val recent = RecentProjects.list()
+            .filter { it != project.basePath }
+          if (recent.isNotEmpty()) {
+            Menu("Open Recent", mnemonic = 'R') {
+              recent.forEach { path ->
+                Item(
+                  RecentProjects.displayName(path),
+                  onClick = { openProjectFromPath(path) }
+                )
+              }
+              Separator()
+              Item("Clear List", onClick = {
+                RecentProjects.list().forEach { RecentProjects.remove(it) }
+              })
+            }
+          }
           Item(
             "Save",
             enabled = activeEditor != null,
