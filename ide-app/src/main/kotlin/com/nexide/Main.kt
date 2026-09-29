@@ -53,6 +53,8 @@ import com.nexide.platform.core.Project
 import com.nexide.platform.core.RecentProjects
 import com.nexide.platform.core.build.Problem
 import com.nexide.platform.core.build.ProblemParser
+import com.nexide.platform.core.navigation.GotoDeclaration
+import com.nexide.platform.core.navigation.NavigationTarget
 import com.nexide.platform.core.run.GradleRunSupport
 import com.nexide.platform.core.run.ProcessOutputListener
 import com.nexide.platform.core.run.ProcessRunner
@@ -71,6 +73,7 @@ import com.nexide.platform.plugin.filetype.FileTypeRegistry
 import com.nexide.platform.ui.git.GitToolWindow
 import com.nexide.platform.ui.projectview.ProjectView
 import com.nexide.platform.ui.build.ProblemsToolWindow
+import com.nexide.platform.ui.navigation.GotoTargetsDialog
 import com.nexide.platform.ui.run.RunConfigDialog
 import com.nexide.platform.ui.run.RunToolWindow
 import com.nexide.platform.ui.search.FindInFilesPanel
@@ -135,6 +138,8 @@ fun main() {
     var problemsVisible by mutableStateOf(false)
     var problems by mutableStateOf<List<Problem>>(emptyList())
     var building by mutableStateOf(false)
+    var gotoTargets by mutableStateOf<Pair<String, List<NavigationTarget>>?>(null)
+    var gotoDialogTitle by mutableStateOf("Go to Declaration")
     // When opening a search hit, request go-to-line after editor opens
     var pendingGoToLine by mutableStateOf<Pair<Editor, Int>?>(null)
 
@@ -274,6 +279,54 @@ fun main() {
       Logger.info("Save All: $count file(s)")
     }
 
+    fun navigateToTarget(target: NavigationTarget) {
+      val file = LocalFileSystem.getInstance().findFileByPath(target.filePath) ?: return
+      selectedFile = file
+      val existing = openEditors.firstOrNull { it.file.path == file.path }
+      val editor = if (existing != null) {
+        activeEditor = existing
+        existing
+      } else {
+        val created = Editor.create(file)
+        openEditors.add(created)
+        activeEditor = created
+        created
+      }
+      pendingGoToLine = editor to target.line
+    }
+
+    fun gotoDeclaration() {
+      val ed = activeEditor ?: return
+      val text = ed.document.getText()
+      val symbol = GotoDeclaration.symbolAt(text, ed.caretOffset)
+      if (symbol == null) {
+        Logger.info("Go to Declaration: no symbol under caret")
+        return
+      }
+      val targets = GotoDeclaration.findDeclarations(File(project.basePath), symbol)
+      when {
+        targets.isEmpty() -> Logger.info("No declaration found for '$symbol'")
+        targets.size == 1 -> navigateToTarget(targets.first())
+        else -> {
+          gotoDialogTitle = "Go to Declaration"
+          gotoTargets = symbol to targets
+        }
+      }
+    }
+
+    fun findUsages() {
+      val ed = activeEditor ?: return
+      val text = ed.document.getText()
+      val symbol = GotoDeclaration.symbolAt(text, ed.caretOffset) ?: return
+      val targets = GotoDeclaration.findUsages(File(project.basePath), symbol)
+      if (targets.isEmpty()) {
+        Logger.info("No usages for '$symbol'")
+        return
+      }
+      gotoDialogTitle = "Find Usages"
+      gotoTargets = symbol to targets
+    }
+
     Window(
       onCloseRequest = {
         application.exit()
@@ -339,6 +392,16 @@ fun main() {
             runConfigManager.selected?.let { runConfiguration(it, debug = true) }
             true
           }
+          // Ctrl+B — Go to Declaration
+          ctrlOrMeta && event.key == Key.B && !shift -> {
+            gotoDeclaration()
+            true
+          }
+          // Alt+F7 — Find Usages
+          event.isAltPressed && event.key == Key.F7 -> {
+            findUsages()
+            true
+          }
           else -> false
         }
       }
@@ -379,6 +442,18 @@ fun main() {
             application.exit()
             exitApplication()
           })
+        }
+        Menu("Navigate", mnemonic = 'N') {
+          Item(
+            "Go to Declaration",
+            enabled = activeEditor != null,
+            onClick = { gotoDeclaration() }
+          )
+          Item(
+            "Find Usages",
+            enabled = activeEditor != null,
+            onClick = { findUsages() }
+          )
         }
         Menu("Build", mnemonic = 'B') {
           Item("Build Project", onClick = { buildProject() })
@@ -466,6 +541,15 @@ fun main() {
             runConfigDialogVisible = false
             runConfiguration(cfg, debug = true)
           }
+        )
+      }
+      gotoTargets?.let { (symbol, targets) ->
+        GotoTargetsDialog(
+          symbol = symbol,
+          targets = targets,
+          title = gotoDialogTitle,
+          onSelect = { navigateToTarget(it) },
+          onDismiss = { gotoTargets = null }
         )
       }
 

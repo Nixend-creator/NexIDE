@@ -33,6 +33,9 @@ class Editor(
   private var myModified = false
   private var myDisposed = false
 
+  /** Last known caret offset (updated by EditorView). */
+  var caretOffset: Int = 0
+
   val isModified: Boolean
     get() = myModified
 

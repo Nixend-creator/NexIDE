@@ -36,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -244,7 +245,13 @@ fun EditorView(
       statusMessage = null
     }
     textFieldValue = newValue
+    editor.caretOffset = newValue.selection.start
     modifiedTick++
+  }
+
+  // Sync caret when only selection moves (arrow keys etc.)
+  SideEffect {
+    editor.caretOffset = textFieldValue.selection.start
   }
 
   val lineCount = remember(text) {
