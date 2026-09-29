@@ -71,7 +71,9 @@ import com.nexide.platform.ui.structure.StructureToolWindow
 import com.nexide.platform.ui.tabs.EditorTabs
 import com.nexide.platform.ui.terminal.TerminalToolWindow
 import com.nexide.platform.core.debug.BreakpointManager
+import com.nexide.platform.core.debug.DebugSessionManager
 import com.nexide.platform.ui.debug.BreakpointsToolWindow
+import com.nexide.platform.ui.debug.DebugToolWindow
 import com.nexide.platform.ui.settings.SettingsDialog
 import com.nexide.platform.ui.welcome.WelcomeScreen
 import com.nexide.platform.util.Logger
