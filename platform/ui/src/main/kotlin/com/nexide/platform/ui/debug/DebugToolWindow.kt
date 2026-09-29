@@ -202,6 +202,33 @@ fun DebugToolWindow(
       TextButton(
         onClick = {
           suspended = null
+          jdiConnector.stepOver()
+        },
+        enabled = attached && suspended != null
+      ) {
+        Text("Step Over", style = MaterialTheme.typography.labelMedium)
+      }
+      TextButton(
+        onClick = {
+          suspended = null
+          jdiConnector.stepInto()
+        },
+        enabled = attached && suspended != null
+      ) {
+        Text("Step Into", style = MaterialTheme.typography.labelMedium)
+      }
+      TextButton(
+        onClick = {
+          suspended = null
+          jdiConnector.stepOut()
+        },
+        enabled = attached && suspended != null
+      ) {
+        Text("Step Out", style = MaterialTheme.typography.labelMedium)
+      }
+      TextButton(
+        onClick = {
+          suspended = null
           jdiConnector.resumeAll()
         },
         enabled = attached

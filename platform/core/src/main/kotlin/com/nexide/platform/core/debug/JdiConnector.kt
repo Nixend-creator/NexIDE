@@ -23,10 +23,11 @@ import com.sun.jdi.ThreadReference
 import com.sun.jdi.VirtualMachine
 import com.sun.jdi.connect.AttachingConnector
 import com.sun.jdi.event.BreakpointEvent
-import com.sun.jdi.event.Event
+import com.sun.jdi.event.StepEvent
 import com.sun.jdi.event.VMDeathEvent
 import com.sun.jdi.event.VMDisconnectEvent
 import com.sun.jdi.request.BreakpointRequest
+import com.sun.jdi.request.StepRequest
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
@@ -51,9 +52,14 @@ class JdiConnector {
   private val myEventThread = AtomicReference<Thread?>(null)
   private val myListeners = CopyOnWriteArrayList<JdiListener>()
   private val myRequests = mutableListOf<BreakpointRequest>()
+  private val mySuspendedThread = AtomicReference<ThreadReference?>(null)
+  private val myStepRequests = mutableListOf<StepRequest>()
 
   val isAttached: Boolean
     get() = myVm.get() != null
+
+  val isSuspended: Boolean
+    get() = mySuspendedThread.get() != null
 
   fun addListener(listener: JdiListener) {
     myListeners.add(listener)
@@ -148,11 +154,74 @@ class JdiConnector {
   fun resumeAll() {
     val vm = myVm.get() ?: return
     try {
+      clearStepRequests()
+      mySuspendedThread.set(null)
       vm.resume()
       fireMessage("VM resumed")
     } catch (e: Exception) {
       Logger.warn("Resume failed: ${e.message}")
     }
+  }
+
+  /**
+   * Step over the current line in the suspended thread (STEP_LINE + STEP_OVER).
+   */
+  fun stepOver(): Boolean = step(StepRequest.STEP_OVER)
+
+  /**
+   * Step into calls on the current line (STEP_LINE + STEP_INTO).
+   */
+  fun stepInto(): Boolean = step(StepRequest.STEP_INTO)
+
+  /**
+   * Step out of the current method (STEP_LINE + STEP_OUT).
+   */
+  fun stepOut(): Boolean = step(StepRequest.STEP_OUT)
+
+  private fun step(depth: Int): Boolean {
+    val vm = myVm.get() ?: return false
+    val thread = mySuspendedThread.get() ?: run {
+      fireMessage("Not suspended — cannot step")
+      return false
+    }
+    return try {
+      clearStepRequests()
+      val req = vm.eventRequestManager().createStepRequest(
+        thread,
+        StepRequest.STEP_LINE,
+        depth
+      )
+      req.addCountFilter(1)
+      req.setSuspendPolicy(StepRequest.SUSPEND_EVENT_THREAD)
+      req.enable()
+      myStepRequests.add(req)
+      mySuspendedThread.set(null)
+      vm.resume()
+      val label = when (depth) {
+        StepRequest.STEP_OVER -> "Step Over"
+        StepRequest.STEP_INTO -> "Step Into"
+        StepRequest.STEP_OUT -> "Step Out"
+        else -> "Step"
+      }
+      fireMessage(label)
+      true
+    } catch (e: Exception) {
+      Logger.warn("Step failed: ${e.message}")
+      fireMessage("Step failed: ${e.message}")
+      false
+    }
+  }
+
+  private fun clearStepRequests() {
+    val vm = myVm.get()
+    myStepRequests.forEach { req ->
+      try {
+        req.disable()
+        vm?.eventRequestManager()?.deleteEventRequest(req)
+      } catch (_: Exception) {
+      }
+    }
+    myStepRequests.clear()
   }
 
   fun listThreads(): List<String> {
@@ -179,7 +248,9 @@ class JdiConnector {
   fun detach() {
     myListening.set(false)
     myEventThread.get()?.interrupt()
+    clearStepRequests()
     clearBreakpointRequests()
+    mySuspendedThread.set(null)
     val vm = myVm.getAndSet(null)
     try {
       vm?.dispose()
@@ -201,9 +272,14 @@ class JdiConnector {
                 resume = false
                 handleBreakpoint(event)
               }
+              is StepEvent -> {
+                resume = false
+                handleStep(event)
+              }
               is VMDeathEvent, is VMDisconnectEvent -> {
                 myListening.set(false)
                 myVm.set(null)
+                mySuspendedThread.set(null)
                 fireDetached()
                 return@Thread
               }
@@ -234,26 +310,41 @@ class JdiConnector {
 
   private fun handleBreakpoint(event: BreakpointEvent) {
     try {
+      clearStepRequests()
       val thread = event.thread()
-      val loc = event.location()
-      val frames = try {
-        thread.frames().take(16).map { frame ->
-          val fl = frame.location()
-          "${fl.declaringType().name()}.${fl.method().name()}:${fl.lineNumber()}"
-        }
-      } catch (_: Exception) {
-        emptyList()
-      }
-      val info = SuspendedThreadInfo(
-        threadName = thread.name(),
-        threadId = thread.uniqueID(),
-        locationDescription = formatLocation(loc),
-        frames = frames
-      )
-      fireSuspended(info)
+      mySuspendedThread.set(thread)
+      fireSuspended(buildSuspendedInfo(thread, event.location()))
     } catch (e: Exception) {
       Logger.warn("handleBreakpoint: ${e.message}")
     }
+  }
+
+  private fun handleStep(event: StepEvent) {
+    try {
+      clearStepRequests()
+      val thread = event.thread()
+      mySuspendedThread.set(thread)
+      fireSuspended(buildSuspendedInfo(thread, event.location()))
+    } catch (e: Exception) {
+      Logger.warn("handleStep: ${e.message}")
+    }
+  }
+
+  private fun buildSuspendedInfo(thread: ThreadReference, loc: Location): SuspendedThreadInfo {
+    val frames = try {
+      thread.frames().take(16).map { frame ->
+        val fl = frame.location()
+        "${fl.declaringType().name()}.${fl.method().name()}:${fl.lineNumber()}"
+      }
+    } catch (_: Exception) {
+      emptyList()
+    }
+    return SuspendedThreadInfo(
+      threadName = thread.name(),
+      threadId = thread.uniqueID(),
+      locationDescription = formatLocation(loc),
+      frames = frames
+    )
   }
 
   private fun clearBreakpointRequests() {
