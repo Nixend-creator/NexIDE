@@ -43,6 +43,7 @@ Current capabilities:
 - Settings (font size, tab size, line numbers)
 - Tab / Shift+Tab indent with configured tab size
 - Breakpoints (gutter toggle + tool window)
+- Debug session (JDWP launch, Debug tool window)
 
 ## Tech Stack
 

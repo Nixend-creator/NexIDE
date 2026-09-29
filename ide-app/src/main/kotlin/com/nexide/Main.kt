@@ -109,7 +109,9 @@ fun main() {
     var selectedFile by mutableStateOf<VirtualFile?>(null)
     var pendingCloseEditor by mutableStateOf<Editor?>(null)
     val processRunner = remember { ProcessRunner() }
+    val debugSessionManager = remember { DebugSessionManager(processRunner) }
     var runPanelVisible by mutableStateOf(false)
+    var debugPanelVisible by mutableStateOf(false)
     var terminalVisible by mutableStateOf(false)
     var gitPanelVisible by mutableStateOf(false)
     var structureVisible by mutableStateOf(false)
@@ -248,14 +250,26 @@ fun main() {
           Item("Gradle: tasks", onClick = { runGradle("tasks") })
           Separator()
           Item(
+            "Debug Gradle: build",
+            onClick = {
+              debugPanelVisible = true
+              debugSessionManager.startGradleDebug(File(project.basePath), "build")
+            }
+          )
+          Item(
+            "Debug Gradle: test",
+            onClick = {
+              debugPanelVisible = true
+              debugSessionManager.startGradleDebug(File(project.basePath), "test")
+            }
+          )
+          Separator()
+          Item(
             "Toggle Breakpoint",
             enabled = activeEditor != null,
             onClick = {
               val ed = activeEditor ?: return@Item
-              // Toggle on line 1 as fallback — EditorView gutter is primary UX
-              val text = ed.document.getText()
-              val line = 1
-              BreakpointManager.getInstance().toggle(ed.file.path, line)
+              BreakpointManager.getInstance().toggle(ed.file.path, 1)
               breakpointsVisible = true
             }
           )
@@ -263,11 +277,18 @@ fun main() {
             "View Breakpoints",
             onClick = { breakpointsVisible = true }
           )
+          Item(
+            "Show Debug Tool Window",
+            onClick = { debugPanelVisible = true }
+          )
           Separator()
           Item(
             "Stop",
-            enabled = processRunner.isRunning,
-            onClick = { processRunner.stop() }
+            enabled = processRunner.isRunning || debugSessionManager.isActive,
+            onClick = {
+              if (debugSessionManager.isActive) debugSessionManager.stop()
+              else processRunner.stop()
+            }
           )
           Item(
             "Show Run Tool Window",
@@ -298,8 +319,11 @@ fun main() {
         selectedFile = selectedFile,
         pendingCloseEditor = pendingCloseEditor,
         processRunner = processRunner,
+        debugSessionManager = debugSessionManager,
         runPanelVisible = runPanelVisible,
         onRunPanelVisibleChange = { runPanelVisible = it },
+        debugPanelVisible = debugPanelVisible,
+        onDebugPanelVisibleChange = { debugPanelVisible = it },
         terminalVisible = terminalVisible,
         onTerminalVisibleChange = { terminalVisible = it },
         gitPanelVisible = gitPanelVisible,
@@ -403,8 +427,11 @@ fun NexIdeApp(
   selectedFile: VirtualFile?,
   pendingCloseEditor: Editor?,
   processRunner: ProcessRunner,
+  debugSessionManager: DebugSessionManager,
   runPanelVisible: Boolean,
   onRunPanelVisibleChange: (Boolean) -> Unit,
+  debugPanelVisible: Boolean = false,
+  onDebugPanelVisibleChange: (Boolean) -> Unit = {},
   terminalVisible: Boolean,
   onTerminalVisibleChange: (Boolean) -> Unit,
   gitPanelVisible: Boolean,
@@ -512,6 +539,15 @@ fun NexIdeApp(
             visible = true,
             onClose = { onBreakpointsVisibleChange(false) },
             onNavigate = onBreakpointNavigate,
+            modifier = Modifier.fillMaxWidth()
+          )
+        }
+        if (debugPanelVisible) {
+          HorizontalDivider()
+          DebugToolWindow(
+            sessionManager = debugSessionManager,
+            visible = true,
+            onClose = { onDebugPanelVisibleChange(false) },
             modifier = Modifier.fillMaxWidth()
           )
         }

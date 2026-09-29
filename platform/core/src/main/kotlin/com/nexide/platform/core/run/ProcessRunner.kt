@@ -44,8 +44,13 @@ class ProcessRunner {
 
   /**
    * Starts [command] in [workingDir]. Returns false if already running or failed to start.
+   * Optional [environment] entries are merged into the process environment.
    */
-  fun start(command: List<String>, workingDir: File): Boolean {
+  fun start(
+    command: List<String>,
+    workingDir: File,
+    environment: Map<String, String> = emptyMap()
+  ): Boolean {
     if (isRunning) {
       Logger.warn("Process already running")
       return false
@@ -55,6 +60,9 @@ class ProcessRunner {
       val builder = ProcessBuilder(command)
         .directory(workingDir)
         .redirectErrorStream(true)
+      if (environment.isNotEmpty()) {
+        builder.environment().putAll(environment)
+      }
 
       val process = builder.start()
       myProcess.set(process)
