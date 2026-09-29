@@ -64,8 +64,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nexide.platform.core.debug.BreakpointManager
+import com.nexide.platform.core.git.GitDiffGutter
+import com.nexide.platform.core.git.LineDiffType
 import com.nexide.platform.core.settings.NexIdeSettings
 import com.nexide.platform.editor.Editor
+import java.io.File
 import com.nexide.platform.editor.completion.CompletionContributor
 import com.nexide.platform.editor.completion.LookupElement
 import com.nexide.platform.editor.format.CodeFormatter
@@ -530,17 +533,32 @@ fun EditorView(
         val bpLines = remember(bpTick, editor.file.path) {
           bpManager.getForFile(editor.file.path).map { it.line }.toSet()
         }
+        val diffLines = remember(editor.file.path, editor.contentRevision, projectRootPath) {
+          val root = projectRootPath?.let { File(it) }
+          if (root != null && root.isDirectory) {
+            GitDiffGutter.invalidate(editor.file.path)
+            GitDiffGutter.lineChanges(root, editor.file.path)
+          } else {
+            emptyMap()
+          }
+        }
 
         Column(
           modifier = Modifier
-            .widthIn(min = lineNumberWidth + 12.dp)
+            .widthIn(min = lineNumberWidth + 16.dp)
             .fillMaxHeight()
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
             .verticalScroll(scrollState)
-            .padding(start = 4.dp, end = 4.dp, top = 12.dp, bottom = 12.dp)
+            .padding(start = 2.dp, end = 4.dp, top = 12.dp, bottom = 12.dp)
         ) {
           for (line in 1..lineCount) {
             val hasBp = line in bpLines
+            val diff = diffLines[line]
+            val diffColor = when (diff) {
+              LineDiffType.ADDED -> Color(0xFF4CAF50)
+              LineDiffType.MODIFIED -> Color(0xFF2196F3)
+              null -> Color.Transparent
+            }
             Row(
               modifier = Modifier
                 .fillMaxWidth()
@@ -550,6 +568,13 @@ fun EditorView(
                 },
               verticalAlignment = Alignment.CenterVertically
             ) {
+              // VCS change stripe
+              Box(
+                modifier = Modifier
+                  .width(3.dp)
+                  .heightIn(min = 14.dp)
+                  .background(diffColor)
+              )
               Text(
                 text = if (hasBp) "●" else " ",
                 style = gutterStyle.copy(
