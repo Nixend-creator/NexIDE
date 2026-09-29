@@ -53,6 +53,7 @@ Current capabilities:
 - Debug auto-attach + jump to source on breakpoint
 - Rename refactoring (Shift+F6, project-wide text)
 - Code formatter (Ctrl+Alt+L, brace-based indent)
+- Git diff gutter (green = added, blue = modified)
 
 ## Tech Stack
 

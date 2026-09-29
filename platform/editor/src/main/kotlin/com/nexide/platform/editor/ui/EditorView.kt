@@ -263,6 +263,49 @@ fun EditorView(
     modifiedTick++
   }
 
+  /**
+   * Toggle // comments on the current line or all lines in the selection.
+   */
+  fun toggleComment() {
+    val sel = textFieldValue.selection
+    val start = minOf(sel.start, sel.end)
+    val end = maxOf(sel.start, sel.end)
+    val lineStart = text.lastIndexOf('\n', (start - 1).coerceAtLeast(0)).let {
+      if (it < 0) 0 else it + 1
+    }
+    val lineEnd = text.indexOf('\n', if (end > start) end - 1 else end).let {
+      if (it < 0) text.length else it
+    }
+    val block = text.substring(lineStart, lineEnd)
+    val blockLines = block.split('\n')
+    val allCommented = blockLines.all { line ->
+      val t = line.trimStart()
+      t.isEmpty() || t.startsWith("//")
+    }
+    val newBlock = blockLines.joinToString("\n") { line ->
+      if (line.isEmpty()) return@joinToString line
+      val leading = line.takeWhile { it == ' ' || it == '\t' }
+      val rest = line.substring(leading.length)
+      if (allCommented) {
+        val uncommented = when {
+          rest.startsWith("// ") -> rest.removePrefix("// ")
+          rest.startsWith("//") -> rest.removePrefix("//")
+          else -> rest
+        }
+        leading + uncommented
+      } else {
+        if (rest.startsWith("//")) line else "$leading// $rest"
+      }
+    }
+    val newText = text.substring(0, lineStart) + newBlock + text.substring(lineEnd)
+    editor.replaceText(newText)
+    editor.undoManager.recordChange()
+    val newEnd = lineStart + newBlock.length
+    textFieldValue = TextFieldValue(newText, TextRange(lineStart, newEnd.coerceAtMost(newText.length)))
+    statusMessage = if (allCommented) "Uncommented" else "Commented"
+    modifiedTick++
+  }
+
   val onTextChange: (TextFieldValue) -> Unit = { newValue ->
     if (newValue.text != textFieldValue.text) {
       editor.document.setText(newValue.text)
@@ -371,6 +414,11 @@ fun EditorView(
           // Ctrl+Alt+L — Format
           ctrlOrMeta && event.isAltPressed && event.key == Key.L -> {
             formatDocument()
+            true
+          }
+          // Ctrl+/ — Toggle line comment
+          ctrlOrMeta && (event.key == Key.Slash || event.key == Key.Divide) -> {
+            toggleComment()
             true
           }
           event.key == Key.Escape && completionVisible -> {
