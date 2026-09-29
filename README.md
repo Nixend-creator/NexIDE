@@ -39,6 +39,7 @@ Current capabilities:
 - Recent projects (File → Open Recent)
 - Structure view (classes / functions / properties)
 - Breadcrumbs (path + structure under editor)
+- Welcome screen with recent projects
 
 ## Tech Stack
 
