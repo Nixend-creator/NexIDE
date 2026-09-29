@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -64,10 +65,14 @@ import androidx.compose.ui.unit.sp
 import com.nexide.platform.core.debug.BreakpointManager
 import com.nexide.platform.core.settings.NexIdeSettings
 import com.nexide.platform.editor.Editor
+import com.nexide.platform.editor.completion.CompletionContributor
+import com.nexide.platform.editor.completion.LookupElement
 import com.nexide.platform.editor.syntax.SyntaxColors
 import com.nexide.platform.editor.syntax.SyntaxHighlighterRegistry
 import com.nexide.platform.plugin.filetype.FileTypeRegistry
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.DisposableEffect
 
 /**
@@ -98,6 +103,10 @@ fun EditorView(
   var replaceText by remember { mutableStateOf("") }
   var findIndex by remember { mutableStateOf(0) }
   var goToLineVisible by remember { mutableStateOf(false) }
+  var completionVisible by remember { mutableStateOf(false) }
+  var completionItems by remember { mutableStateOf<List<LookupElement>>(emptyList()) }
+  var completionSelected by remember { mutableStateOf(0) }
+  var completionPrefix by remember { mutableStateOf("") }
   val findMatches = remember(text, findQuery) { findMatches(text, findQuery) }
   if (findIndex >= findMatches.size && findMatches.isNotEmpty()) {
     findIndex = 0
@@ -202,6 +211,32 @@ fun EditorView(
     modifiedTick++
   }
 
+  fun showCompletion() {
+    val offset = textFieldValue.selection.start
+    val lang = FileTypeRegistry.getLanguageByFileName(editor.file.name)
+    completionPrefix = CompletionContributor.prefixAt(text, offset)
+    completionItems = CompletionContributor.complete(text, offset, lang)
+    completionSelected = 0
+    completionVisible = completionItems.isNotEmpty()
+    if (completionVisible) {
+      statusMessage = "Completion (${completionItems.size})"
+    }
+  }
+
+  fun applyCompletion(item: LookupElement) {
+    val offset = textFieldValue.selection.start
+    val prefix = CompletionContributor.prefixAt(text, offset)
+    val start = offset - prefix.length
+    val newText = text.substring(0, start) + item.lookupString + text.substring(offset)
+    val newCaret = start + item.lookupString.length
+    editor.document.setText(newText)
+    editor.undoManager.recordChange()
+    textFieldValue = TextFieldValue(newText, TextRange(newCaret))
+    completionVisible = false
+    statusMessage = null
+    modifiedTick++
+  }
+
   val onTextChange: (TextFieldValue) -> Unit = { newValue ->
     if (newValue.text != textFieldValue.text) {
       editor.document.setText(newValue.text)
@@ -297,9 +332,35 @@ fun EditorView(
             goToLineVisible = true
             true
           }
+          ctrlOrMeta && event.key == Key.Spacebar -> {
+            showCompletion()
+            true
+          }
+          event.key == Key.Escape && completionVisible -> {
+            completionVisible = false
+            true
+          }
           event.key == Key.Escape && findVisible -> {
             findVisible = false
             replaceMode = false
+            true
+          }
+          completionVisible && event.key == Key.DirectionDown -> {
+            if (completionItems.isNotEmpty()) {
+              completionSelected = (completionSelected + 1) % completionItems.size
+            }
+            true
+          }
+          completionVisible && event.key == Key.DirectionUp -> {
+            if (completionItems.isNotEmpty()) {
+              completionSelected =
+                if (completionSelected <= 0) completionItems.lastIndex else completionSelected - 1
+            }
+            true
+          }
+          completionVisible && (event.key == Key.Enter || event.key == Key.NumPadEnter ||
+            (event.key == Key.Tab && !event.isShiftPressed)) -> {
+            completionItems.getOrNull(completionSelected)?.let { applyCompletion(it) }
             true
           }
           ctrlOrMeta && event.key == Key.Z && !event.isShiftPressed -> {
@@ -310,7 +371,7 @@ fun EditorView(
             performRedo()
             true
           }
-          event.key == Key.Tab && !event.isShiftPressed && !ctrlOrMeta -> {
+          event.key == Key.Tab && !event.isShiftPressed && !ctrlOrMeta && !completionVisible -> {
             insertIndent()
             true
           }
@@ -472,34 +533,75 @@ fun EditorView(
         }
       }
 
-      // Text field with syntax highlight overlay
-      BasicTextField(
-        value = textFieldValue,
-        onValueChange = onTextChange,
-        modifier = Modifier
-          .weight(1f)
-          .fillMaxHeight()
-          .verticalScroll(scrollState)
-          .padding(start = 8.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
-        textStyle = textStyle,
-        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
-        decorationBox = { innerTextField ->
-          Box {
-            if (text.isEmpty()) {
-              Text(
-                text = "// Start typing...",
-                style = highlightStyle.copy(color = Color.Gray)
-              )
-            } else {
-              Text(
-                text = highlightedText,
-                style = highlightStyle
-              )
+      // Text field with syntax highlight overlay + completion popup
+      Box(modifier = Modifier.weight(1f).fillMaxHeight()) {
+        BasicTextField(
+          value = textFieldValue,
+          onValueChange = { newValue ->
+            if (completionVisible) completionVisible = false
+            onTextChange(newValue)
+          },
+          modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(scrollState)
+            .padding(start = 8.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
+          textStyle = textStyle,
+          cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+          decorationBox = { innerTextField ->
+            Box {
+              if (text.isEmpty()) {
+                Text(
+                  text = "// Start typing...",
+                  style = highlightStyle.copy(color = Color.Gray)
+                )
+              } else {
+                Text(
+                  text = highlightedText,
+                  style = highlightStyle
+                )
+              }
+              innerTextField()
             }
-            innerTextField()
+          }
+        )
+        if (completionVisible && completionItems.isNotEmpty()) {
+          LazyColumn(
+            modifier = Modifier
+              .align(Alignment.TopStart)
+              .padding(start = 24.dp, top = 40.dp)
+              .widthIn(min = 180.dp, max = 320.dp)
+              .heightIn(max = 220.dp)
+              .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.small)
+              .padding(4.dp)
+          ) {
+            itemsIndexed(completionItems) { index, item ->
+              Row(
+                modifier = Modifier
+                  .fillMaxWidth()
+                  .background(
+                    if (index == completionSelected) MaterialTheme.colorScheme.primaryContainer
+                    else Color.Transparent
+                  )
+                  .clickable { applyCompletion(item) }
+                  .padding(horizontal = 8.dp, vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+              ) {
+                Text(
+                  text = item.lookupString,
+                  style = MaterialTheme.typography.bodySmall,
+                  color = MaterialTheme.colorScheme.onSurface,
+                  modifier = Modifier.weight(1f)
+                )
+                Text(
+                  text = item.typeText,
+                  style = MaterialTheme.typography.labelSmall,
+                  color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+              }
+            }
           }
         }
-      )
+      }
     }
   }
 }
