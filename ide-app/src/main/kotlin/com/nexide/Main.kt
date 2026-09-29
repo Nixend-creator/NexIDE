@@ -70,6 +70,8 @@ import com.nexide.platform.ui.search.SearchHit
 import com.nexide.platform.ui.structure.StructureToolWindow
 import com.nexide.platform.ui.tabs.EditorTabs
 import com.nexide.platform.ui.terminal.TerminalToolWindow
+import com.nexide.platform.core.debug.BreakpointManager
+import com.nexide.platform.ui.debug.BreakpointsToolWindow
 import com.nexide.platform.ui.settings.SettingsDialog
 import com.nexide.platform.ui.welcome.WelcomeScreen
 import com.nexide.platform.util.Logger
@@ -114,6 +116,7 @@ fun main() {
     var findInFilesVisible by mutableStateOf(false)
     var settingsVisible by mutableStateOf(false)
     var settingsRevision by mutableStateOf(0)
+    var breakpointsVisible by mutableStateOf(false)
     // When opening a search hit, request go-to-line after editor opens
     var pendingGoToLine by mutableStateOf<Pair<Editor, Int>?>(null)
 
@@ -245,6 +248,23 @@ fun main() {
           Item("Gradle: tasks", onClick = { runGradle("tasks") })
           Separator()
           Item(
+            "Toggle Breakpoint",
+            enabled = activeEditor != null,
+            onClick = {
+              val ed = activeEditor ?: return@Item
+              // Toggle on line 1 as fallback — EditorView gutter is primary UX
+              val text = ed.document.getText()
+              val line = 1
+              BreakpointManager.getInstance().toggle(ed.file.path, line)
+              breakpointsVisible = true
+            }
+          )
+          Item(
+            "View Breakpoints",
+            onClick = { breakpointsVisible = true }
+          )
+          Separator()
+          Item(
             "Stop",
             enabled = processRunner.isRunning,
             onClick = { processRunner.stop() }
@@ -257,6 +277,7 @@ fun main() {
         Menu("View", mnemonic = 'V') {
           Item("Find in Files", onClick = { findInFilesVisible = true })
           Item("Structure", onClick = { structureVisible = true })
+          Item("Breakpoints", onClick = { breakpointsVisible = true })
           Item("Git", onClick = { gitPanelVisible = true })
           Item("Terminal", onClick = { terminalVisible = true })
           Item("Run Tool Window", onClick = { runPanelVisible = true })
@@ -283,6 +304,26 @@ fun main() {
         onTerminalVisibleChange = { terminalVisible = it },
         gitPanelVisible = gitPanelVisible,
         onGitPanelVisibleChange = { gitPanelVisible = it },
+        breakpointsVisible = breakpointsVisible,
+        onBreakpointsVisibleChange = { breakpointsVisible = it },
+        onBreakpointNavigate = { filePath, line ->
+          val file = com.nexide.platform.core.vfs.LocalFileSystem.getInstance()
+            .findFileByPath(filePath)
+          if (file != null) {
+            selectedFile = file
+            val existing = openEditors.firstOrNull { it.file.path == file.path }
+            val editor = if (existing != null) {
+              activeEditor = existing
+              existing
+            } else {
+              val created = Editor.create(file)
+              openEditors.add(created)
+              activeEditor = created
+              created
+            }
+            pendingGoToLine = editor to line
+          }
+        },
         structureVisible = structureVisible,
         onStructureVisibleChange = { structureVisible = it },
         findInFilesVisible = findInFilesVisible,
@@ -368,6 +409,9 @@ fun NexIdeApp(
   onTerminalVisibleChange: (Boolean) -> Unit,
   gitPanelVisible: Boolean,
   onGitPanelVisibleChange: (Boolean) -> Unit,
+  breakpointsVisible: Boolean = false,
+  onBreakpointsVisibleChange: (Boolean) -> Unit = {},
+  onBreakpointNavigate: (filePath: String, line: Int) -> Unit = { _, _ -> },
   structureVisible: Boolean,
   onStructureVisibleChange: (Boolean) -> Unit,
   findInFilesVisible: Boolean,
@@ -459,6 +503,15 @@ fun NexIdeApp(
             visible = true,
             onClose = { onFindInFilesVisibleChange(false) },
             onOpenHit = onOpenSearchHit,
+            modifier = Modifier.fillMaxWidth()
+          )
+        }
+        if (breakpointsVisible) {
+          HorizontalDivider()
+          BreakpointsToolWindow(
+            visible = true,
+            onClose = { onBreakpointsVisibleChange(false) },
+            onNavigate = onBreakpointNavigate,
             modifier = Modifier.fillMaxWidth()
           )
         }

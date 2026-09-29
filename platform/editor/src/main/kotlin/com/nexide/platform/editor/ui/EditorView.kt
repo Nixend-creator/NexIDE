@@ -61,11 +61,14 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nexide.platform.core.debug.BreakpointManager
 import com.nexide.platform.core.settings.NexIdeSettings
 import com.nexide.platform.editor.Editor
 import com.nexide.platform.editor.syntax.SyntaxColors
 import com.nexide.platform.editor.syntax.SyntaxHighlighterRegistry
 import com.nexide.platform.plugin.filetype.FileTypeRegistry
+import androidx.compose.foundation.clickable
+import androidx.compose.runtime.DisposableEffect
 
 /**
  * Basic text editor view backed by an [Editor] instance.
@@ -420,19 +423,52 @@ fun EditorView(
         .background(MaterialTheme.colorScheme.surface)
     ) {
       if (showGutter) {
-        Box(
+        val bpManager = remember { BreakpointManager.getInstance() }
+        var bpTick by remember { mutableStateOf(0) }
+        DisposableEffect(bpManager, editor.file.path) {
+          val listener = { bpTick++ }
+          bpManager.addListener(listener)
+          onDispose { bpManager.removeListener(listener) }
+        }
+        @Suppress("UNUSED_EXPRESSION")
+        bpTick
+        val bpLines = remember(bpTick, editor.file.path) {
+          bpManager.getForFile(editor.file.path).map { it.line }.toSet()
+        }
+
+        Column(
           modifier = Modifier
-            .widthIn(min = lineNumberWidth)
+            .widthIn(min = lineNumberWidth + 12.dp)
             .fillMaxHeight()
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
             .verticalScroll(scrollState)
-            .padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)
+            .padding(start = 4.dp, end = 4.dp, top = 12.dp, bottom = 12.dp)
         ) {
-          val numbers = (1..lineCount).joinToString("\n")
-          Text(
-            text = numbers,
-            style = gutterStyle
-          )
+          for (line in 1..lineCount) {
+            val hasBp = line in bpLines
+            Row(
+              modifier = Modifier
+                .fillMaxWidth()
+                .clickable {
+                  bpManager.toggle(editor.file.path, line)
+                  bpTick++
+                },
+              verticalAlignment = Alignment.CenterVertically
+            ) {
+              Text(
+                text = if (hasBp) "●" else " ",
+                style = gutterStyle.copy(
+                  color = if (hasBp) Color(0xFFE53935) else Color.Transparent,
+                  textAlign = TextAlign.Center
+                ),
+                modifier = Modifier.width(12.dp)
+              )
+              Text(
+                text = line.toString(),
+                style = gutterStyle
+              )
+            }
+          }
         }
       }
 
