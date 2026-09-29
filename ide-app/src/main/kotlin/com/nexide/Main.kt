@@ -401,7 +401,8 @@ fun NexIdeApp(
                 editor = editor,
                 modifier = Modifier.weight(1f).fillMaxSize(),
                 gotoLineRequest = gotoLine,
-                onGotoLineHandled = onPendingGoToLineHandled
+                onGotoLineHandled = onPendingGoToLineHandled,
+                projectRootPath = project.basePath
               )
             } else {
               Box(

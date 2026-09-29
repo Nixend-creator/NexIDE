@@ -79,7 +79,8 @@ fun EditorView(
   modifier: Modifier = Modifier,
   /** When non-null, jumps caret to this 1-based line (e.g. from Find in Files). */
   gotoLineRequest: Int? = null,
-  onGotoLineHandled: () -> Unit = {}
+  onGotoLineHandled: () -> Unit = {},
+  projectRootPath: String? = null
 ) {
   var textFieldValue by remember(editor) {
     mutableStateOf(TextFieldValue(editor.document.getText()))
@@ -315,6 +316,16 @@ fun EditorView(
         Spacer(modifier = Modifier.width(8.dp))
       }
     }
+
+    val caretLine = lineColAtOffset(text, textFieldValue.selection.start).first
+    BreadcrumbsBar(
+      projectRootPath = projectRootPath,
+      file = editor.file,
+      documentText = text,
+      language = language,
+      caretLine = caretLine,
+      onNavigateToLine = { line -> goToLine(line) }
+    )
 
     if (findVisible) {
       FindBar(

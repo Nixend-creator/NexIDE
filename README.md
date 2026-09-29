@@ -38,6 +38,7 @@ Current capabilities:
 - Git tool window: stage / unstage / commit / diff / push / pull
 - Recent projects (File → Open Recent)
 - Structure view (classes / functions / properties)
+- Breadcrumbs (path + structure under editor)
 
 ## Tech Stack
 
@@ -110,8 +111,9 @@ We follow IntelliJ Platform inspired coding standards:
 25. ✅ Git push / pull
 26. ✅ Recent projects
 27. ✅ Structure view
-28. Debugger integration
-29. ...
+28. ✅ Breadcrumbs
+29. Debugger integration
+30. ...
 
 ## Contributing
 
