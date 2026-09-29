@@ -41,6 +41,7 @@ Current capabilities:
 - Breadcrumbs (path + structure under editor)
 - Welcome screen with recent projects
 - Settings (font size, tab size, line numbers)
+- Tab / Shift+Tab indent with configured tab size
 
 ## Tech Stack
 
