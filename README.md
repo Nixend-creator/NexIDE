@@ -48,6 +48,7 @@ Current capabilities:
 - Run Configurations (Gradle / Application)
 - Problems panel (build errors, click to navigate)
 - Code completion (Ctrl+Space: keywords + file symbols)
+- Save All + IDE shortcuts (Build, Run, Debug, Settings)
 
 ## Tech Stack
 
