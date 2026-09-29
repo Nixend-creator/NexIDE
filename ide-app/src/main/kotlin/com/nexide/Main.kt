@@ -51,10 +51,14 @@ import androidx.compose.ui.window.rememberWindowState
 import com.nexide.platform.core.Application
 import com.nexide.platform.core.Project
 import com.nexide.platform.core.RecentProjects
+import com.nexide.platform.core.build.Problem
+import com.nexide.platform.core.build.ProblemParser
 import com.nexide.platform.core.run.GradleRunSupport
+import com.nexide.platform.core.run.ProcessOutputListener
 import com.nexide.platform.core.run.ProcessRunner
 import com.nexide.platform.core.run.RunConfiguration
 import com.nexide.platform.core.run.RunConfigurationManager
+import com.nexide.platform.core.vfs.LocalFileSystem
 import com.nexide.platform.core.vfs.VirtualFile
 import com.nexide.platform.editor.Editor
 import com.nexide.platform.editor.ui.EditorView
@@ -66,6 +70,7 @@ import com.nexide.platform.ui.dialog.ConfirmCloseDialog
 import com.nexide.platform.plugin.filetype.FileTypeRegistry
 import com.nexide.platform.ui.git.GitToolWindow
 import com.nexide.platform.ui.projectview.ProjectView
+import com.nexide.platform.ui.build.ProblemsToolWindow
 import com.nexide.platform.ui.run.RunConfigDialog
 import com.nexide.platform.ui.run.RunToolWindow
 import com.nexide.platform.ui.search.FindInFilesPanel
@@ -127,12 +132,52 @@ fun main() {
     var settingsRevision by mutableStateOf(0)
     var breakpointsVisible by mutableStateOf(false)
     var runConfigDialogVisible by mutableStateOf(false)
+    var problemsVisible by mutableStateOf(false)
+    var problems by mutableStateOf<List<Problem>>(emptyList())
+    var building by mutableStateOf(false)
     // When opening a search hit, request go-to-line after editor opens
     var pendingGoToLine by mutableStateOf<Pair<Editor, Int>?>(null)
 
     val runConfigManager = remember { RunConfigurationManager.getInstance() }
     // Seed defaults for current project
     runConfigManager.ensureDefaults(File(project.basePath))
+
+    fun buildProject() {
+      val dir = File(project.basePath)
+      if (!GradleRunSupport.isGradleProject(dir)) {
+        Logger.warn("Not a Gradle project")
+        problemsVisible = true
+        return
+      }
+      val gradle = GradleRunSupport.findGradleCommand(dir) ?: return
+      problems = emptyList()
+      building = true
+      problemsVisible = true
+      val buffer = StringBuilder()
+      val listener = object : ProcessOutputListener {
+        override fun onOutput(text: String) {
+          buffer.append(text)
+        }
+
+        override fun onFinished(exitCode: Int) {
+          processRunner.removeListener(this)
+          val parsed = ProblemParser.parseOutput(buffer.toString())
+          // Resolve relative paths against project root
+          problems = parsed.map { p ->
+            val path = p.filePath
+            if (path != null && !File(path).isAbsolute) {
+              p.copy(filePath = File(dir, path).canonicalPath)
+            } else {
+              p
+            }
+          }
+          building = false
+          Logger.info("Build finished ($exitCode): ${problems.size} problem(s)")
+        }
+      }
+      processRunner.addListener(listener)
+      processRunner.start(gradle + "build", dir)
+    }
 
     fun runGradle(task: String) {
       val dir = File(project.basePath)
@@ -277,6 +322,10 @@ fun main() {
             exitApplication()
           })
         }
+        Menu("Build", mnemonic = 'B') {
+          Item("Build Project", onClick = { buildProject() })
+          Item("Show Problems", onClick = { problemsVisible = true })
+        }
         Menu("Run", mnemonic = 'R') {
           Item(
             "Run '${runConfigManager.selected?.name ?: "…"}'",
@@ -336,6 +385,7 @@ fun main() {
           Item("Git", onClick = { gitPanelVisible = true })
           Item("Terminal", onClick = { terminalVisible = true })
           Item("Run Tool Window", onClick = { runPanelVisible = true })
+          Item("Problems", onClick = { problemsVisible = true })
         }
       }
 
@@ -374,6 +424,31 @@ fun main() {
         onRunPanelVisibleChange = { runPanelVisible = it },
         debugPanelVisible = debugPanelVisible,
         onDebugPanelVisibleChange = { debugPanelVisible = it },
+        problemsVisible = problemsVisible,
+        onProblemsVisibleChange = { problemsVisible = it },
+        problems = problems,
+        building = building,
+        onRebuild = { buildProject() },
+        onNavigateProblem = { problem ->
+          val path = problem.filePath
+          if (path != null) {
+            val file = LocalFileSystem.getInstance().findFileByPath(path)
+            if (file != null) {
+              selectedFile = file
+              val existing = openEditors.firstOrNull { it.file.path == file.path }
+              val editor = if (existing != null) {
+                activeEditor = existing
+                existing
+              } else {
+                val created = Editor.create(file)
+                openEditors.add(created)
+                activeEditor = created
+                created
+              }
+              pendingGoToLine = editor to (problem.line ?: 1)
+            }
+          }
+        },
         terminalVisible = terminalVisible,
         onTerminalVisibleChange = { terminalVisible = it },
         gitPanelVisible = gitPanelVisible,
@@ -483,6 +558,12 @@ fun NexIdeApp(
   onRunPanelVisibleChange: (Boolean) -> Unit,
   debugPanelVisible: Boolean = false,
   onDebugPanelVisibleChange: (Boolean) -> Unit = {},
+  problemsVisible: Boolean = false,
+  onProblemsVisibleChange: (Boolean) -> Unit = {},
+  problems: List<Problem> = emptyList(),
+  building: Boolean = false,
+  onRebuild: () -> Unit = {},
+  onNavigateProblem: (Problem) -> Unit = {},
   terminalVisible: Boolean,
   onTerminalVisibleChange: (Boolean) -> Unit,
   gitPanelVisible: Boolean,
@@ -581,6 +662,18 @@ fun NexIdeApp(
             visible = true,
             onClose = { onFindInFilesVisibleChange(false) },
             onOpenHit = onOpenSearchHit,
+            modifier = Modifier.fillMaxWidth()
+          )
+        }
+        if (problemsVisible) {
+          HorizontalDivider()
+          ProblemsToolWindow(
+            problems = problems,
+            building = building,
+            visible = true,
+            onClose = { onProblemsVisibleChange(false) },
+            onNavigate = onNavigateProblem,
+            onRebuild = onRebuild,
             modifier = Modifier.fillMaxWidth()
           )
         }
