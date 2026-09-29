@@ -52,6 +52,7 @@ Current capabilities:
 - Go to Declaration / Find Usages (Ctrl+B, Alt+F7)
 - Debug auto-attach + jump to source on breakpoint
 - Rename refactoring (Shift+F6, project-wide text)
+- Code formatter (Ctrl+Alt+L, brace-based indent)
 
 ## Tech Stack
 
