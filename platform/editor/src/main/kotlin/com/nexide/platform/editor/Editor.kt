@@ -103,6 +103,16 @@ class Editor(
     contentRevision++
   }
 
+  /**
+   * Replaces document text and bumps [contentRevision] so the UI refreshes.
+   */
+  fun replaceText(newText: String) {
+    if (myDisposed) return
+    document.setText(newText)
+    myModified = true
+    contentRevision++
+  }
+
   fun dispose() {
     if (myDisposed) return
     myDisposed = true
