@@ -36,6 +36,7 @@ Current capabilities:
 - Find in Files (Ctrl/Cmd+Shift+F)
 - Git status badges in Project View (M/A/?/D + refresh)
 - Git tool window: stage / unstage / commit / diff / push / pull
+- Recent projects (File → Open Recent)
 
 ## Tech Stack
 
