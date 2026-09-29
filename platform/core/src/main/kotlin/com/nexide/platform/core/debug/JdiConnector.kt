@@ -17,9 +17,16 @@
 package com.nexide.platform.core.debug
 
 import com.nexide.platform.util.Logger
+import com.sun.jdi.ArrayReference
 import com.sun.jdi.Bootstrap
+import com.sun.jdi.LocalVariable
 import com.sun.jdi.Location
+import com.sun.jdi.ObjectReference
+import com.sun.jdi.PrimitiveValue
+import com.sun.jdi.StackFrame
+import com.sun.jdi.StringReference
 import com.sun.jdi.ThreadReference
+import com.sun.jdi.Value
 import com.sun.jdi.VirtualMachine
 import com.sun.jdi.connect.AttachingConnector
 import com.sun.jdi.event.BreakpointEvent
@@ -33,13 +40,24 @@ import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicReference
 
 /**
+ * One variable or field visible at a suspend point.
+ */
+data class DebugVariable(
+  val name: String,
+  val typeName: String,
+  val value: String,
+  val scope: String = "local" // local | this | arg
+)
+
+/**
  * Snapshot of a suspended thread at a breakpoint.
  */
 data class SuspendedThreadInfo(
   val threadName: String,
   val threadId: Long,
   val locationDescription: String,
-  val frames: List<String>
+  val frames: List<String>,
+  val variables: List<DebugVariable> = emptyList()
 )
 
 /**
@@ -339,12 +357,108 @@ class JdiConnector {
     } catch (_: Exception) {
       emptyList()
     }
+    val variables = try {
+      if (thread.frameCount() > 0) collectVariables(thread.frame(0)) else emptyList()
+    } catch (e: Exception) {
+      Logger.warn("collectVariables: ${e.message}")
+      emptyList()
+    }
     return SuspendedThreadInfo(
       threadName = thread.name(),
       threadId = thread.uniqueID(),
       locationDescription = formatLocation(loc),
-      frames = frames
+      frames = frames,
+      variables = variables
     )
+  }
+
+  private fun collectVariables(frame: StackFrame): List<DebugVariable> {
+    val result = mutableListOf<DebugVariable>()
+    try {
+      val visible: List<LocalVariable> = try {
+        frame.visibleVariables()
+      } catch (_: Exception) {
+        emptyList()
+      }
+      val values = try {
+        frame.getValues(visible)
+      } catch (_: Exception) {
+        emptyMap()
+      }
+      for (variable in visible) {
+        val value = values[variable]
+        val scope = if (variable.isArgument) "arg" else "local"
+        result.add(
+          DebugVariable(
+            name = variable.name(),
+            typeName = try {
+              variable.typeName()
+            } catch (_: Exception) {
+              "?"
+            },
+            value = formatValue(value),
+            scope = scope
+          )
+        )
+      }
+    } catch (e: Exception) {
+      Logger.warn("locals: ${e.message}")
+    }
+
+    // this fields (shallow)
+    try {
+      val thisObj = frame.thisObject()
+      if (thisObj != null) {
+        val type = thisObj.referenceType()
+        for (field in type.fields().take(32)) {
+          if (field.isStatic) continue
+          try {
+            val value = thisObj.getValue(field)
+            result.add(
+              DebugVariable(
+                name = "this.${field.name()}",
+                typeName = try {
+                  field.typeName()
+                } catch (_: Exception) {
+                  "?"
+                },
+                value = formatValue(value),
+                scope = "this"
+              )
+            )
+          } catch (_: Exception) {
+          }
+        }
+      }
+    } catch (_: Exception) {
+    }
+    return result
+  }
+
+  private fun formatValue(value: Value?): String {
+    if (value == null) return "null"
+    return try {
+      when (value) {
+        is PrimitiveValue -> value.toString()
+        is StringReference -> "\"${value.value()}\""
+        is ArrayReference -> {
+          val len = value.length()
+          val preview = (0 until minOf(len, 8)).joinToString(", ") { i ->
+            formatValue(value.getValue(i))
+          }
+          val more = if (len > 8) ", …" else ""
+          "[$preview$more] (len=$len)"
+        }
+        is ObjectReference -> {
+          val typeName = value.referenceType().name().substringAfterLast('.')
+          // try toString if safe (may invoke method — skip for safety)
+          "$typeName@${Integer.toHexString(value.uniqueID().toInt())}"
+        }
+        else -> value.toString()
+      }
+    } catch (e: Exception) {
+      "<error: ${e.message}>"
+    }
   }
 
   private fun clearBreakpointRequests() {

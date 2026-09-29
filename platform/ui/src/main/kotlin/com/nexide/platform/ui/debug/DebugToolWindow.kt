@@ -262,21 +262,98 @@ fun DebugToolWindow(
       )
     }
 
-    Text(
-      text = output.ifEmpty {
-        "1) Run → Debug Gradle  2) Attach  3) Install BPs  4) hit a breakpoint → Resume"
-      },
-      style = MaterialTheme.typography.bodySmall.copy(
-        fontFamily = FontFamily.Monospace,
-        fontSize = 12.sp,
-        lineHeight = 16.sp
-      ),
-      color = MaterialTheme.colorScheme.onSurface,
+    Row(
       modifier = Modifier
-        .fillMaxSize()
+        .weight(1f)
+        .fillMaxWidth()
         .background(MaterialTheme.colorScheme.surface)
-        .padding(8.dp)
-        .verticalScroll(scrollState)
+    ) {
+      // Console / event log
+      Text(
+        text = output.ifEmpty {
+          "1) Run → Debug Gradle  2) Attach  3) Install BPs  4) hit BP → Variables appear here"
+        },
+        style = MaterialTheme.typography.bodySmall.copy(
+          fontFamily = FontFamily.Monospace,
+          fontSize = 12.sp,
+          lineHeight = 16.sp
+        ),
+        color = MaterialTheme.colorScheme.onSurface,
+        modifier = Modifier
+          .weight(1.2f)
+          .fillMaxHeight()
+          .padding(8.dp)
+          .verticalScroll(scrollState)
+      )
+
+      // Variables pane
+      VerticalDivider()
+      VariablesPane(
+        variables = suspended?.variables.orEmpty(),
+        modifier = Modifier
+          .weight(1f)
+          .fillMaxHeight()
+      )
+    }
+  }
+}
+
+@Composable
+private fun VariablesPane(
+  variables: List<DebugVariable>,
+  modifier: Modifier = Modifier
+) {
+  Column(modifier = modifier.padding(4.dp)) {
+    Text(
+      text = "Variables",
+      style = MaterialTheme.typography.labelMedium,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
     )
+    if (variables.isEmpty()) {
+      Text(
+        text = "No variables (not suspended or no debug info)",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(8.dp)
+      )
+    } else {
+      LazyColumn(modifier = Modifier.fillMaxSize()) {
+        items(variables, key = { "${it.scope}:${it.name}" }) { v ->
+          Row(
+            modifier = Modifier
+              .fillMaxWidth()
+              .padding(horizontal = 6.dp, vertical = 2.dp),
+            verticalAlignment = Alignment.CenterVertically
+          ) {
+            Text(
+              text = when (v.scope) {
+                "arg" -> "a"
+                "this" -> "f"
+                else -> "v"
+              },
+              style = MaterialTheme.typography.labelSmall,
+              color = MaterialTheme.colorScheme.primary,
+              modifier = Modifier.width(14.dp)
+            )
+            Text(
+              text = v.name,
+              style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+              modifier = Modifier.width(100.dp)
+            )
+            Text(
+              text = v.value,
+              style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+              modifier = Modifier.weight(1f)
+            )
+          }
+        }
+      }
+    }
   }
 }

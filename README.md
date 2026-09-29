@@ -125,7 +125,8 @@ We follow IntelliJ Platform inspired coding standards:
 33. ✅ Debug session (JDWP launch)
 34. ✅ JDI attach / Install BPs / Resume
 35. ✅ Step Over / Into / Out
-36. Variables view
+36. ✅ Variables view
+37. ...
 34. ...
 
 ## Contributing
