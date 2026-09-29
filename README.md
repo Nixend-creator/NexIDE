@@ -44,6 +44,7 @@ Current capabilities:
 - Tab / Shift+Tab indent with configured tab size
 - Breakpoints (gutter toggle + tool window)
 - Debug session (JDWP launch, Debug tool window)
+- JDI attach / Install BPs / Resume on breakpoint
 
 ## Tech Stack
 
