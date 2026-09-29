@@ -40,6 +40,7 @@ Current capabilities:
 - Structure view (classes / functions / properties)
 - Breadcrumbs (path + structure under editor)
 - Welcome screen with recent projects
+- Settings (font size, tab size, line numbers)
 
 ## Tech Stack
 
