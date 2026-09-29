@@ -35,7 +35,7 @@ Current capabilities:
 - Terminal (commands in project dir, cd, history)
 - Find in Files (Ctrl/Cmd+Shift+F)
 - Git status badges in Project View (M/A/?/D + refresh)
-- Git tool window: stage / unstage / commit / diff
+- Git tool window: stage / unstage / commit / diff / push / pull
 
 ## Tech Stack
 
