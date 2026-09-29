@@ -108,8 +108,9 @@ We follow IntelliJ Platform inspired coding standards:
 24. ✅ Git stage / commit / diff tool window
 25. ✅ Git push / pull
 26. ✅ Recent projects
-27. Debugger integration
-28. ...
+27. ✅ Structure view
+28. Debugger integration
+29. ...
 
 ## Contributing
 

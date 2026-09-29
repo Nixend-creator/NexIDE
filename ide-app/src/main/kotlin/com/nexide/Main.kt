@@ -61,11 +61,13 @@ import com.nexide.platform.plugin.example.CoreFileTypesPlugin
 import com.nexide.platform.plugin.example.FILE_TYPE_EP
 import com.nexide.platform.ui.dialog.CloseConfirmResult
 import com.nexide.platform.ui.dialog.ConfirmCloseDialog
+import com.nexide.platform.plugin.filetype.FileTypeRegistry
 import com.nexide.platform.ui.git.GitToolWindow
 import com.nexide.platform.ui.projectview.ProjectView
 import com.nexide.platform.ui.run.RunToolWindow
 import com.nexide.platform.ui.search.FindInFilesPanel
 import com.nexide.platform.ui.search.SearchHit
+import com.nexide.platform.ui.structure.StructureToolWindow
 import com.nexide.platform.ui.tabs.EditorTabs
 import com.nexide.platform.ui.terminal.TerminalToolWindow
 import com.nexide.platform.util.Logger
@@ -106,6 +108,7 @@ fun main() {
     var runPanelVisible by mutableStateOf(false)
     var terminalVisible by mutableStateOf(false)
     var gitPanelVisible by mutableStateOf(false)
+    var structureVisible by mutableStateOf(false)
     var findInFilesVisible by mutableStateOf(false)
     // When opening a search hit, request go-to-line after editor opens
     var pendingGoToLine by mutableStateOf<Pair<Editor, Int>?>(null)
@@ -247,6 +250,7 @@ fun main() {
         }
         Menu("View", mnemonic = 'V') {
           Item("Find in Files", onClick = { findInFilesVisible = true })
+          Item("Structure", onClick = { structureVisible = true })
           Item("Git", onClick = { gitPanelVisible = true })
           Item("Terminal", onClick = { terminalVisible = true })
           Item("Run Tool Window", onClick = { runPanelVisible = true })
@@ -266,6 +270,8 @@ fun main() {
         onTerminalVisibleChange = { terminalVisible = it },
         gitPanelVisible = gitPanelVisible,
         onGitPanelVisibleChange = { gitPanelVisible = it },
+        structureVisible = structureVisible,
+        onStructureVisibleChange = { structureVisible = it },
         findInFilesVisible = findInFilesVisible,
         onFindInFilesVisibleChange = { findInFilesVisible = it },
         pendingGoToLine = pendingGoToLine,
@@ -295,6 +301,10 @@ fun main() {
             created
           }
           pendingGoToLine = editor to hit.lineNumber
+        },
+        onNavigateToLine = { editor, line ->
+          activeEditor = editor
+          pendingGoToLine = editor to line
         },
         onSelectEditor = {
           activeEditor = it
@@ -342,12 +352,15 @@ fun NexIdeApp(
   onTerminalVisibleChange: (Boolean) -> Unit,
   gitPanelVisible: Boolean,
   onGitPanelVisibleChange: (Boolean) -> Unit,
+  structureVisible: Boolean,
+  onStructureVisibleChange: (Boolean) -> Unit,
   findInFilesVisible: Boolean,
   onFindInFilesVisibleChange: (Boolean) -> Unit,
   pendingGoToLine: Pair<Editor, Int>?,
   onPendingGoToLineHandled: () -> Unit,
   onOpenFile: (VirtualFile) -> Unit,
   onOpenSearchHit: (SearchHit) -> Unit,
+  onNavigateToLine: (Editor, Int) -> Unit,
   onSelectEditor: (Editor) -> Unit,
   onRequestClose: (Editor) -> Unit,
   onCloseConfirm: (Editor, CloseConfirmResult) -> Unit
@@ -402,6 +415,23 @@ fun NexIdeApp(
                 )
               }
             }
+          }
+
+          if (structureVisible) {
+            VerticalDivider()
+            val editor = activeEditor
+            StructureToolWindow(
+              fileName = editor?.file?.name,
+              text = editor?.document?.getText(),
+              language = editor?.file?.name?.let { FileTypeRegistry.getLanguageByFileName(it) },
+              visible = true,
+              onClose = { onStructureVisibleChange(false) },
+              onNavigate = { line ->
+                if (editor != null) {
+                  onNavigateToLine(editor, line)
+                }
+              }
+            )
           }
         }
 
