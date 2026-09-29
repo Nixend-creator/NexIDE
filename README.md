@@ -45,6 +45,7 @@ Current capabilities:
 - Breakpoints (gutter toggle + tool window)
 - Debug session (JDWP launch, Debug tool window)
 - JDI attach / Install BPs / Resume on breakpoint
+- Run Configurations (Gradle / Application)
 
 ## Tech Stack
 
