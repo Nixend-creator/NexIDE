@@ -54,6 +54,7 @@ Current capabilities:
 - Rename refactoring (Shift+F6, project-wide text)
 - Code formatter (Ctrl+Alt+L, brace-based indent)
 - Git diff gutter (green = added, blue = modified)
+- Comment / uncomment lines (Ctrl+/)
 
 ## Tech Stack
 

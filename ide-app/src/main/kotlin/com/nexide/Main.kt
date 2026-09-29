@@ -568,6 +568,13 @@ fun main() {
               }
             }
           )
+          Item(
+            "Comment with Line Comment",
+            enabled = activeEditor != null,
+            onClick = {
+              Logger.info("Use Ctrl+/ in the editor to toggle line comments")
+            }
+          )
         }
         Menu("Refactor", mnemonic = 'T') {
           Item(
