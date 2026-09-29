@@ -72,6 +72,7 @@ import com.nexide.platform.ui.tabs.EditorTabs
 import com.nexide.platform.ui.terminal.TerminalToolWindow
 import com.nexide.platform.core.debug.BreakpointManager
 import com.nexide.platform.core.debug.DebugSessionManager
+import com.nexide.platform.core.debug.JdiConnector
 import com.nexide.platform.ui.debug.BreakpointsToolWindow
 import com.nexide.platform.ui.debug.DebugToolWindow
 import com.nexide.platform.ui.settings.SettingsDialog
@@ -112,6 +113,7 @@ fun main() {
     var pendingCloseEditor by mutableStateOf<Editor?>(null)
     val processRunner = remember { ProcessRunner() }
     val debugSessionManager = remember { DebugSessionManager(processRunner) }
+    val jdiConnector = remember { JdiConnector() }
     var runPanelVisible by mutableStateOf(false)
     var debugPanelVisible by mutableStateOf(false)
     var terminalVisible by mutableStateOf(false)
@@ -322,6 +324,7 @@ fun main() {
         pendingCloseEditor = pendingCloseEditor,
         processRunner = processRunner,
         debugSessionManager = debugSessionManager,
+        jdiConnector = jdiConnector,
         runPanelVisible = runPanelVisible,
         onRunPanelVisibleChange = { runPanelVisible = it },
         debugPanelVisible = debugPanelVisible,
@@ -430,6 +433,7 @@ fun NexIdeApp(
   pendingCloseEditor: Editor?,
   processRunner: ProcessRunner,
   debugSessionManager: DebugSessionManager,
+  jdiConnector: JdiConnector,
   runPanelVisible: Boolean,
   onRunPanelVisibleChange: (Boolean) -> Unit,
   debugPanelVisible: Boolean = false,
@@ -548,6 +552,7 @@ fun NexIdeApp(
           HorizontalDivider()
           DebugToolWindow(
             sessionManager = debugSessionManager,
+            jdiConnector = jdiConnector,
             visible = true,
             onClose = { onDebugPanelVisibleChange(false) },
             modifier = Modifier.fillMaxWidth()

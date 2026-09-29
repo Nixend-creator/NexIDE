@@ -14,3 +14,14 @@ dependencies {
 tasks.test {
   useJUnitPlatform()
 }
+
+// JDI (com.sun.jdi) lives in the jdk.jdi module
+tasks.withType<JavaCompile>().configureEach {
+  options.compilerArgs.addAll(listOf("--add-modules", "jdk.jdi"))
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+  compilerOptions {
+    freeCompilerArgs.add("-Xjdk-release=21")
+  }
+}

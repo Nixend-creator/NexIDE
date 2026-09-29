@@ -43,15 +43,19 @@ import androidx.compose.ui.unit.sp
 import com.nexide.platform.core.debug.BreakpointManager
 import com.nexide.platform.core.debug.DebugSessionManager
 import com.nexide.platform.core.debug.DebugSessionState
+import com.nexide.platform.core.debug.JdiConnector
+import com.nexide.platform.core.debug.JdiListener
+import com.nexide.platform.core.debug.SuspendedThreadInfo
 import com.nexide.platform.core.run.ProcessOutputListener
 import javax.swing.SwingUtilities
 
 /**
- * Debug tool window: session status, JDWP port, breakpoints count, process output.
+ * Debug tool window: session status, JDWP port, JDI attach, breakpoints, output.
  */
 @Composable
 fun DebugToolWindow(
   sessionManager: DebugSessionManager,
+  jdiConnector: JdiConnector,
   visible: Boolean,
   onClose: () -> Unit,
   modifier: Modifier = Modifier
@@ -61,9 +65,11 @@ fun DebugToolWindow(
   var state by remember { mutableStateOf(sessionManager.state) }
   var output by remember { mutableStateOf("") }
   var bpCount by remember { mutableStateOf(BreakpointManager.getInstance().getAll().size) }
+  var attached by remember { mutableStateOf(jdiConnector.isAttached) }
+  var suspended by remember { mutableStateOf<SuspendedThreadInfo?>(null) }
   val scrollState = rememberScrollState()
 
-  DisposableEffect(sessionManager) {
+  DisposableEffect(sessionManager, jdiConnector) {
     val stateListener: (DebugSessionState) -> Unit = { s ->
       SwingUtilities.invokeLater { state = s }
     }
@@ -95,10 +101,45 @@ fun DebugToolWindow(
     }
     BreakpointManager.getInstance().addListener(bpListener)
 
+    val jdiListener = object : JdiListener {
+      override fun onAttached(vmName: String) {
+        SwingUtilities.invokeLater {
+          attached = true
+          output += "[JDI] Attached to $vmName\n"
+        }
+      }
+
+      override fun onDetached() {
+        SwingUtilities.invokeLater {
+          attached = false
+          suspended = null
+          output += "[JDI] Detached\n"
+        }
+      }
+
+      override fun onBreakpointHit(info: SuspendedThreadInfo) {
+        SwingUtilities.invokeLater {
+          suspended = info
+          output += "[BREAK] ${info.locationDescription} in ${info.threadName}\n"
+          info.frames.take(8).forEach { frame ->
+            output += "    at $frame\n"
+          }
+        }
+      }
+
+      override fun onMessage(message: String) {
+        SwingUtilities.invokeLater {
+          output += "[JDI] $message\n"
+        }
+      }
+    }
+    jdiConnector.addListener(jdiListener)
+
     onDispose {
       sessionManager.removeStateListener(stateListener)
       sessionManager.getProcessRunner().removeListener(outputListener)
       BreakpointManager.getInstance().removeListener(bpListener)
+      jdiConnector.removeListener(jdiListener)
     }
   }
 
@@ -106,17 +147,19 @@ fun DebugToolWindow(
     scrollState.animateScrollTo(scrollState.maxValue)
   }
 
-  val stateLabel = when (state) {
-    DebugSessionState.IDLE -> "Idle"
-    DebugSessionState.STARTING -> "Starting…"
-    DebugSessionState.RUNNING -> "Running"
-    DebugSessionState.STOPPED -> "Stopped"
+  val stateLabel = when {
+    suspended != null -> "Suspended"
+    attached -> "Attached"
+    state == DebugSessionState.STARTING -> "Starting…"
+    state == DebugSessionState.RUNNING -> "Running"
+    state == DebugSessionState.STOPPED -> "Stopped"
+    else -> "Idle"
   }
 
   Column(
     modifier = modifier
       .fillMaxWidth()
-      .heightIn(min = 180.dp, max = 320.dp)
+      .heightIn(min = 180.dp, max = 340.dp)
       .background(MaterialTheme.colorScheme.surfaceVariant)
   ) {
     Row(
@@ -135,11 +178,44 @@ fun DebugToolWindow(
         text = "port ${sessionManager.debugPort} · $bpCount bp",
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(end = 8.dp)
+        modifier = Modifier.padding(end = 4.dp)
       )
+      TextButton(
+        onClick = {
+          Thread {
+            jdiConnector.attach(port = sessionManager.debugPort)
+          }.start()
+        },
+        enabled = !attached
+      ) {
+        Text("Attach", style = MaterialTheme.typography.labelMedium)
+      }
+      TextButton(
+        onClick = {
+          val n = jdiConnector.installBreakpoints(BreakpointManager.getInstance().getAll())
+          output += "[JDI] install → $n request(s)\n"
+        },
+        enabled = attached
+      ) {
+        Text("Install BPs", style = MaterialTheme.typography.labelMedium)
+      }
+      TextButton(
+        onClick = {
+          suspended = null
+          jdiConnector.resumeAll()
+        },
+        enabled = attached
+      ) {
+        Text("Resume", style = MaterialTheme.typography.labelMedium)
+      }
       if (sessionManager.isActive) {
         TextButton(onClick = { sessionManager.stop() }) {
           Text("Stop", style = MaterialTheme.typography.labelMedium)
+        }
+      }
+      if (attached) {
+        TextButton(onClick = { jdiConnector.detach() }) {
+          Text("Detach", style = MaterialTheme.typography.labelMedium)
         }
       }
       TextButton(onClick = { output = "" }) {
@@ -150,9 +226,18 @@ fun DebugToolWindow(
       }
     }
 
+    if (suspended != null) {
+      Text(
+        text = "● ${suspended!!.locationDescription}  (${suspended!!.threadName})",
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.error,
+        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+      )
+    }
+
     Text(
       text = output.ifEmpty {
-        "No debug session. Use Run → Debug Gradle to start with JDWP on port ${DebugSessionManager.DEFAULT_PORT}."
+        "1) Run → Debug Gradle  2) Attach  3) Install BPs  4) hit a breakpoint → Resume"
       },
       style = MaterialTheme.typography.bodySmall.copy(
         fontFamily = FontFamily.Monospace,

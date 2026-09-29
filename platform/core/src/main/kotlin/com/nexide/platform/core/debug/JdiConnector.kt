@@ -1,0 +1,311 @@
+/*
+ * Copyright 2026 NexIDE Contributors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package com.nexide.platform.core.debug
+
+import com.nexide.platform.util.Logger
+import com.sun.jdi.Bootstrap
+import com.sun.jdi.Location
+import com.sun.jdi.ThreadReference
+import com.sun.jdi.VirtualMachine
+import com.sun.jdi.connect.AttachingConnector
+import com.sun.jdi.event.BreakpointEvent
+import com.sun.jdi.event.Event
+import com.sun.jdi.event.VMDeathEvent
+import com.sun.jdi.event.VMDisconnectEvent
+import com.sun.jdi.request.BreakpointRequest
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
+
+/**
+ * Snapshot of a suspended thread at a breakpoint.
+ */
+data class SuspendedThreadInfo(
+  val threadName: String,
+  val threadId: Long,
+  val locationDescription: String,
+  val frames: List<String>
+)
+
+/**
+ * Connects to a JDWP target, installs line breakpoints, listens for suspend events.
+ */
+class JdiConnector {
+
+  private val myVm = AtomicReference<VirtualMachine?>(null)
+  private val myListening = AtomicBoolean(false)
+  private val myEventThread = AtomicReference<Thread?>(null)
+  private val myListeners = CopyOnWriteArrayList<JdiListener>()
+  private val myRequests = mutableListOf<BreakpointRequest>()
+
+  val isAttached: Boolean
+    get() = myVm.get() != null
+
+  fun addListener(listener: JdiListener) {
+    myListeners.add(listener)
+  }
+
+  fun removeListener(listener: JdiListener) {
+    myListeners.remove(listener)
+  }
+
+  /**
+   * Attach to a VM listening on [host]:[port] (default localhost:5005).
+   */
+  fun attach(host: String = "localhost", port: Int = DebugSessionManager.DEFAULT_PORT): Boolean {
+    if (isAttached) {
+      Logger.warn("Already attached")
+      return true
+    }
+    return try {
+      val connector = findSocketAttachConnector()
+        ?: run {
+          Logger.error("No socket attach connector found")
+          return false
+        }
+      val args = connector.defaultArguments()
+      args["hostname"]?.setValue(host)
+      args["port"]?.setValue(port.toString())
+      // Short timeout so UI doesn't hang forever
+      args["timeout"]?.setValue("5000")
+
+      Logger.info("JDI attaching to $host:$port …")
+      val vm = connector.attach(args)
+      myVm.set(vm)
+      startEventLoop(vm)
+      fireAttached(vm.name())
+      Logger.info("JDI attached to ${vm.name()}")
+      true
+    } catch (e: Exception) {
+      Logger.error("JDI attach failed: ${e.message}", e)
+      fireMessage("Attach failed: ${e.message}")
+      false
+    }
+  }
+
+  /**
+   * Install breakpoints from [BreakpointManager] into the attached VM.
+   * Matches by source file name (simple name) and line.
+   */
+  fun installBreakpoints(breakpoints: List<Breakpoint>): Int {
+    val vm = myVm.get() ?: return 0
+    clearBreakpointRequests()
+    var installed = 0
+    for (bp in breakpoints) {
+      if (!bp.enabled) continue
+      val simpleName = bp.filePath.substringAfterLast('/').substringAfterLast('\\')
+      try {
+        val classes = vm.classesByName(guessClassName(simpleName))
+        // Also scan all classes for matching source
+        val candidates = if (classes.isNotEmpty()) {
+          classes
+        } else {
+          vm.allClasses().filter { ref ->
+            try {
+              ref.sourceName() == simpleName
+            } catch (_: Exception) {
+              false
+            }
+          }
+        }
+        for (cls in candidates) {
+          try {
+            val locations = cls.locationsOfLine(bp.line)
+            for (loc in locations) {
+              val req = vm.eventRequestManager().createBreakpointRequest(loc)
+              req.setSuspendPolicy(BreakpointRequest.SUSPEND_EVENT_THREAD)
+              req.enable()
+              myRequests.add(req)
+              installed++
+              Logger.info("Breakpoint installed: $simpleName:${bp.line} @ $loc")
+            }
+          } catch (e: Exception) {
+            Logger.warn("Cannot set BP ${simpleName}:${bp.line}: ${e.message}")
+          }
+        }
+      } catch (e: Exception) {
+        Logger.warn("Breakpoint lookup failed for ${bp.filePath}:${bp.line}: ${e.message}")
+      }
+    }
+    fireMessage("Installed $installed breakpoint request(s)")
+    return installed
+  }
+
+  fun resumeAll() {
+    val vm = myVm.get() ?: return
+    try {
+      vm.resume()
+      fireMessage("VM resumed")
+    } catch (e: Exception) {
+      Logger.warn("Resume failed: ${e.message}")
+    }
+  }
+
+  fun listThreads(): List<String> {
+    val vm = myVm.get() ?: return emptyList()
+    return try {
+      vm.allThreads().map { t ->
+        val status = when (t.status()) {
+          ThreadReference.THREAD_STATUS_RUNNING -> "RUNNING"
+          ThreadReference.THREAD_STATUS_WAIT -> "WAIT"
+          ThreadReference.THREAD_STATUS_ZOMBIE -> "ZOMBIE"
+          ThreadReference.THREAD_STATUS_MONITOR -> "MONITOR"
+          ThreadReference.THREAD_STATUS_NOT_STARTED -> "NOT_STARTED"
+          ThreadReference.THREAD_STATUS_SLEEPING -> "SLEEPING"
+          else -> "UNKNOWN"
+        }
+        "${t.name()} [$status]"
+      }
+    } catch (e: Exception) {
+      Logger.warn("listThreads: ${e.message}")
+      emptyList()
+    }
+  }
+
+  fun detach() {
+    myListening.set(false)
+    myEventThread.get()?.interrupt()
+    clearBreakpointRequests()
+    val vm = myVm.getAndSet(null)
+    try {
+      vm?.dispose()
+    } catch (_: Exception) {
+    }
+    fireDetached()
+  }
+
+  private fun startEventLoop(vm: VirtualMachine) {
+    myListening.set(true)
+    val thread = Thread({
+      try {
+        while (myListening.get()) {
+          val eventSet = vm.eventQueue().remove(1000) ?: continue
+          var resume = true
+          for (event in eventSet) {
+            when (event) {
+              is BreakpointEvent -> {
+                resume = false
+                handleBreakpoint(event)
+              }
+              is VMDeathEvent, is VMDisconnectEvent -> {
+                myListening.set(false)
+                myVm.set(null)
+                fireDetached()
+                return@Thread
+              }
+              else -> {
+                // ignore
+              }
+            }
+          }
+          if (resume) {
+            try {
+              eventSet.resume()
+            } catch (_: Exception) {
+            }
+          }
+        }
+      } catch (e: InterruptedException) {
+        // stop
+      } catch (e: Exception) {
+        if (myListening.get()) {
+          Logger.warn("JDI event loop: ${e.message}")
+        }
+      }
+    }, "nexide-jdi-events")
+    thread.isDaemon = true
+    myEventThread.set(thread)
+    thread.start()
+  }
+
+  private fun handleBreakpoint(event: BreakpointEvent) {
+    try {
+      val thread = event.thread()
+      val loc = event.location()
+      val frames = try {
+        thread.frames().take(16).map { frame ->
+          val fl = frame.location()
+          "${fl.declaringType().name()}.${fl.method().name()}:${fl.lineNumber()}"
+        }
+      } catch (_: Exception) {
+        emptyList()
+      }
+      val info = SuspendedThreadInfo(
+        threadName = thread.name(),
+        threadId = thread.uniqueID(),
+        locationDescription = formatLocation(loc),
+        frames = frames
+      )
+      fireSuspended(info)
+    } catch (e: Exception) {
+      Logger.warn("handleBreakpoint: ${e.message}")
+    }
+  }
+
+  private fun clearBreakpointRequests() {
+    val vm = myVm.get()
+    myRequests.forEach { req ->
+      try {
+        req.disable()
+        vm?.eventRequestManager()?.deleteEventRequest(req)
+      } catch (_: Exception) {
+      }
+    }
+    myRequests.clear()
+  }
+
+  private fun findSocketAttachConnector(): AttachingConnector? {
+    return Bootstrap.virtualMachineManager().attachingConnectors()
+      .firstOrNull { it.transport().name() == "dt_socket" }
+  }
+
+  private fun guessClassName(sourceFileName: String): String {
+    // Main.kt / Main.java → Main (package unknown; classesByName needs FQN often)
+    return sourceFileName.substringBeforeLast('.').replace('.', '$')
+  }
+
+  private fun formatLocation(loc: Location): String {
+    return try {
+      "${loc.sourceName()}:${loc.lineNumber()} (${loc.declaringType().name()}.${loc.method().name()})"
+    } catch (_: Exception) {
+      loc.toString()
+    }
+  }
+
+  private fun fireAttached(name: String) {
+    myListeners.forEach { it.onAttached(name) }
+  }
+
+  private fun fireDetached() {
+    myListeners.forEach { it.onDetached() }
+  }
+
+  private fun fireSuspended(info: SuspendedThreadInfo) {
+    myListeners.forEach { it.onBreakpointHit(info) }
+  }
+
+  private fun fireMessage(msg: String) {
+    myListeners.forEach { it.onMessage(msg) }
+  }
+}
+
+interface JdiListener {
+  fun onAttached(vmName: String) {}
+  fun onDetached() {}
+  fun onBreakpointHit(info: SuspendedThreadInfo) {}
+  fun onMessage(message: String) {}
+}

@@ -24,6 +24,7 @@ dependencies {
 compose.desktop {
   application {
     mainClass = "com.nexide.MainKt"
+    jvmArgs += listOf("--add-modules", "jdk.jdi")
     nativeDistributions {
       targetFormats(org.jetbrains.compose.desktop.application.dsl.TargetFormat.Dmg,
                     org.jetbrains.compose.desktop.application.dsl.TargetFormat.Msi,
