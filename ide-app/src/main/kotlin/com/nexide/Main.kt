@@ -70,6 +70,7 @@ import com.nexide.platform.ui.search.SearchHit
 import com.nexide.platform.ui.structure.StructureToolWindow
 import com.nexide.platform.ui.tabs.EditorTabs
 import com.nexide.platform.ui.terminal.TerminalToolWindow
+import com.nexide.platform.ui.settings.SettingsDialog
 import com.nexide.platform.ui.welcome.WelcomeScreen
 import com.nexide.platform.util.Logger
 import java.io.File
@@ -111,6 +112,8 @@ fun main() {
     var gitPanelVisible by mutableStateOf(false)
     var structureVisible by mutableStateOf(false)
     var findInFilesVisible by mutableStateOf(false)
+    var settingsVisible by mutableStateOf(false)
+    var settingsRevision by mutableStateOf(0)
     // When opening a search hit, request go-to-line after editor opens
     var pendingGoToLine by mutableStateOf<Pair<Editor, Int>?>(null)
 
@@ -229,6 +232,8 @@ fun main() {
             onClick = { saveActive() }
           )
           Separator()
+          Item("Settings…", onClick = { settingsVisible = true })
+          Separator()
           Item("Exit", onClick = {
             application.exit()
             exitApplication()
@@ -258,6 +263,13 @@ fun main() {
         }
       }
 
+      if (settingsVisible) {
+        SettingsDialog(
+          onDismiss = { settingsVisible = false },
+          onApplied = { settingsRevision++ }
+        )
+      }
+
       NexIdeApp(
         project = project,
         openEditors = openEditors,
@@ -275,6 +287,7 @@ fun main() {
         onStructureVisibleChange = { structureVisible = it },
         findInFilesVisible = findInFilesVisible,
         onFindInFilesVisibleChange = { findInFilesVisible = it },
+        settingsRevision = settingsRevision,
         pendingGoToLine = pendingGoToLine,
         onPendingGoToLineHandled = { pendingGoToLine = null },
         onOpenFile = { file ->
@@ -359,6 +372,7 @@ fun NexIdeApp(
   onStructureVisibleChange: (Boolean) -> Unit,
   findInFilesVisible: Boolean,
   onFindInFilesVisibleChange: (Boolean) -> Unit,
+  settingsRevision: Int = 0,
   pendingGoToLine: Pair<Editor, Int>?,
   onPendingGoToLineHandled: () -> Unit,
   onOpenFile: (VirtualFile) -> Unit,
@@ -407,7 +421,8 @@ fun NexIdeApp(
                 modifier = Modifier.weight(1f).fillMaxSize(),
                 gotoLineRequest = gotoLine,
                 onGotoLineHandled = onPendingGoToLineHandled,
-                projectRootPath = project.basePath
+                projectRootPath = project.basePath,
+                settingsRevision = settingsRevision
               )
             } else {
               WelcomeScreen(

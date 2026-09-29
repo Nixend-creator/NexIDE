@@ -61,13 +61,11 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nexide.platform.core.settings.NexIdeSettings
 import com.nexide.platform.editor.Editor
 import com.nexide.platform.editor.syntax.SyntaxColors
 import com.nexide.platform.editor.syntax.SyntaxHighlighterRegistry
 import com.nexide.platform.plugin.filetype.FileTypeRegistry
-
-private val EDITOR_FONT_SIZE = 14.sp
-private val EDITOR_LINE_HEIGHT = 20.sp
 
 /**
  * Basic text editor view backed by an [Editor] instance.
@@ -80,7 +78,9 @@ fun EditorView(
   /** When non-null, jumps caret to this 1-based line (e.g. from Find in Files). */
   gotoLineRequest: Int? = null,
   onGotoLineHandled: () -> Unit = {},
-  projectRootPath: String? = null
+  projectRootPath: String? = null,
+  /** Bump to re-read settings (font size, line numbers). */
+  settingsRevision: Int = 0
 ) {
   var textFieldValue by remember(editor) {
     mutableStateOf(TextFieldValue(editor.document.getText()))
@@ -210,23 +210,29 @@ fun EditorView(
     }
   }
 
+  @Suppress("UNUSED_EXPRESSION")
+  settingsRevision // recompose when settings change
+  val fontSizeSp = NexIdeSettings.editorFontSize.sp
+  val lineHeightSp = (NexIdeSettings.editorFontSize * 1.4f).sp
+  val showGutter = NexIdeSettings.showLineNumbers
+
   val textStyle = TextStyle(
     fontFamily = FontFamily.Monospace,
-    fontSize = EDITOR_FONT_SIZE,
+    fontSize = fontSizeSp,
     color = Color.Transparent, // real colors come from highlighted overlay
-    lineHeight = EDITOR_LINE_HEIGHT
+    lineHeight = lineHeightSp
   )
   val highlightStyle = TextStyle(
     fontFamily = FontFamily.Monospace,
-    fontSize = EDITOR_FONT_SIZE,
+    fontSize = fontSizeSp,
     color = syntaxColors.default,
-    lineHeight = EDITOR_LINE_HEIGHT
+    lineHeight = lineHeightSp
   )
   val gutterStyle = TextStyle(
     fontFamily = FontFamily.Monospace,
-    fontSize = EDITOR_FONT_SIZE,
+    fontSize = fontSizeSp,
     color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-    lineHeight = EDITOR_LINE_HEIGHT,
+    lineHeight = lineHeightSp,
     textAlign = TextAlign.End
   )
 
@@ -372,20 +378,21 @@ fun EditorView(
         .fillMaxSize()
         .background(MaterialTheme.colorScheme.surface)
     ) {
-      // Line numbers gutter
-      Box(
-        modifier = Modifier
-          .widthIn(min = lineNumberWidth)
-          .fillMaxHeight()
-          .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
-          .verticalScroll(scrollState)
-          .padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)
-      ) {
-        val numbers = (1..lineCount).joinToString("\n")
-        Text(
-          text = numbers,
-          style = gutterStyle
-        )
+      if (showGutter) {
+        Box(
+          modifier = Modifier
+            .widthIn(min = lineNumberWidth)
+            .fillMaxHeight()
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+            .verticalScroll(scrollState)
+            .padding(start = 8.dp, end = 8.dp, top = 12.dp, bottom = 12.dp)
+        ) {
+          val numbers = (1..lineCount).joinToString("\n")
+          Text(
+            text = numbers,
+            style = gutterStyle
+          )
+        }
       }
 
       // Text field with syntax highlight overlay

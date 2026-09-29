@@ -114,8 +114,9 @@ We follow IntelliJ Platform inspired coding standards:
 27. ✅ Structure view
 28. ✅ Breadcrumbs
 29. ✅ Welcome screen
-30. Debugger integration
-31. ...
+30. ✅ Settings
+31. Debugger integration
+32. ...
 
 ## Contributing
 
