@@ -121,7 +121,8 @@ We follow IntelliJ Platform inspired coding standards:
 30. ✅ Settings
 31. ✅ Tab indent (spaces by tab size)
 32. ✅ Breakpoints (debugger foundation)
-33. Debug session (JDWP)
+33. ✅ Debug session (JDWP launch)
+34. JDI attach / step over
 34. ...
 
 ## Contributing
