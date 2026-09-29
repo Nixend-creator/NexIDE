@@ -49,6 +49,7 @@ Current capabilities:
 - Problems panel (build errors, click to navigate)
 - Code completion (Ctrl+Space: keywords + file symbols)
 - Save All + IDE shortcuts (Build, Run, Debug, Settings)
+- Go to Declaration / Find Usages (Ctrl+B, Alt+F7)
 
 ## Tech Stack
 
