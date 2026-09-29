@@ -166,6 +166,39 @@ fun EditorView(
     modifiedTick++
   }
 
+  fun insertIndent() {
+    val tabSize = NexIdeSettings.tabSize
+    val spaces = " ".repeat(tabSize)
+    val sel = textFieldValue.selection
+    val start = minOf(sel.start, sel.end)
+    val end = maxOf(sel.start, sel.end)
+    val newText = text.substring(0, start) + spaces + text.substring(end)
+    val newCaret = start + spaces.length
+    editor.document.setText(newText)
+    editor.undoManager.recordChange()
+    textFieldValue = TextFieldValue(newText, TextRange(newCaret))
+    modifiedTick++
+  }
+
+  fun removeIndent() {
+    val tabSize = NexIdeSettings.tabSize
+    val sel = textFieldValue.selection
+    val caret = minOf(sel.start, sel.end)
+    // Find start of current line
+    val lineStart = text.lastIndexOf('\n', (caret - 1).coerceAtLeast(0)).let {
+      if (it < 0) 0 else it + 1
+    }
+    val leading = text.substring(lineStart, caret)
+    val spacesToRemove = leading.takeWhile { it == ' ' }.length.coerceAtMost(tabSize)
+    if (spacesToRemove == 0) return
+    val removeFrom = caret - spacesToRemove
+    val newText = text.substring(0, removeFrom) + text.substring(caret)
+    editor.document.setText(newText)
+    editor.undoManager.recordChange()
+    textFieldValue = TextFieldValue(newText, TextRange(removeFrom))
+    modifiedTick++
+  }
+
   val onTextChange: (TextFieldValue) -> Unit = { newValue ->
     if (newValue.text != textFieldValue.text) {
       editor.document.setText(newValue.text)
@@ -272,6 +305,14 @@ fun EditorView(
           }
           ctrlOrMeta && (event.key == Key.Y || (event.key == Key.Z && event.isShiftPressed)) -> {
             performRedo()
+            true
+          }
+          event.key == Key.Tab && !event.isShiftPressed && !ctrlOrMeta -> {
+            insertIndent()
+            true
+          }
+          event.key == Key.Tab && event.isShiftPressed && !ctrlOrMeta -> {
+            removeIndent()
             true
           }
           else -> false
