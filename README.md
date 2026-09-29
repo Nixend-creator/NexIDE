@@ -47,6 +47,7 @@ Current capabilities:
 - JDI attach / Install BPs / Resume on breakpoint
 - Run Configurations (Gradle / Application)
 - Problems panel (build errors, click to navigate)
+- Code completion (Ctrl+Space: keywords + file symbols)
 
 ## Tech Stack
 
