@@ -98,6 +98,12 @@ fun EditorView(
   var statusMessage by remember { mutableStateOf<String?>(null) }
   var modifiedTick by remember { mutableStateOf(0) }
 
+  // Reload buffer when Editor.reloadFromDisk() bumps contentRevision
+  LaunchedEffect(editor, editor.contentRevision) {
+    textFieldValue = TextFieldValue(editor.document.getText())
+    modifiedTick++
+  }
+
   var findVisible by remember { mutableStateOf(false) }
   var replaceMode by remember { mutableStateOf(false) }
   var findQuery by remember { mutableStateOf("") }

@@ -74,6 +74,7 @@ import com.nexide.platform.ui.git.GitToolWindow
 import com.nexide.platform.ui.projectview.ProjectView
 import com.nexide.platform.ui.build.ProblemsToolWindow
 import com.nexide.platform.ui.navigation.GotoTargetsDialog
+import com.nexide.platform.ui.refactor.RenameDialog
 import com.nexide.platform.ui.run.RunConfigDialog
 import com.nexide.platform.ui.run.RunToolWindow
 import com.nexide.platform.ui.search.FindInFilesPanel
@@ -143,6 +144,7 @@ fun main() {
     var building by mutableStateOf(false)
     var gotoTargets by mutableStateOf<Pair<String, List<NavigationTarget>>?>(null)
     var gotoDialogTitle by mutableStateOf("Go to Declaration")
+    var renameSymbol by mutableStateOf<String?>(null)
     // When opening a search hit, request go-to-line after editor opens
     var pendingGoToLine by mutableStateOf<Pair<Editor, Int>?>(null)
 
@@ -396,6 +398,26 @@ fun main() {
       gotoTargets = symbol to targets
     }
 
+    fun startRename() {
+      val ed = activeEditor ?: return
+      val symbol = GotoDeclaration.symbolAt(ed.document.getText(), ed.caretOffset)
+      if (symbol == null) {
+        Logger.info("Rename: no symbol under caret")
+        return
+      }
+      renameSymbol = symbol
+    }
+
+    fun reloadOpenEditorsFromDisk() {
+      openEditors.forEach { ed ->
+        try {
+          ed.reloadFromDisk()
+        } catch (e: Exception) {
+          Logger.warn("Reload failed for ${ed.file.path}: ${e.message}")
+        }
+      }
+    }
+
     Window(
       onCloseRequest = {
         application.exit()
@@ -471,6 +493,11 @@ fun main() {
             findUsages()
             true
           }
+          // Shift+F6 — Rename
+          event.isShiftPressed && event.key == Key.F6 -> {
+            startRename()
+            true
+          }
           else -> false
         }
       }
@@ -522,6 +549,13 @@ fun main() {
             "Find Usages",
             enabled = activeEditor != null,
             onClick = { findUsages() }
+          )
+        }
+        Menu("Refactor", mnemonic = 'T') {
+          Item(
+            "Rename…",
+            enabled = activeEditor != null,
+            onClick = { startRename() }
           )
         }
         Menu("Build", mnemonic = 'B') {
@@ -619,6 +653,17 @@ fun main() {
           title = gotoDialogTitle,
           onSelect = { navigateToTarget(it) },
           onDismiss = { gotoTargets = null }
+        )
+      }
+      renameSymbol?.let { symbol ->
+        RenameDialog(
+          projectRoot = File(project.basePath),
+          oldName = symbol,
+          onApplied = { files, newName ->
+            Logger.info("Renamed '$symbol' → '$newName' in $files file(s)")
+            reloadOpenEditorsFromDisk()
+          },
+          onDismiss = { renameSymbol = null }
         )
       }
 

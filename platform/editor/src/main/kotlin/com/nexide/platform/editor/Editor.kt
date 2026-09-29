@@ -36,6 +36,10 @@ class Editor(
   /** Last known caret offset (updated by EditorView). */
   var caretOffset: Int = 0
 
+  /** Bumped when content is reloaded from disk so UI can refresh. */
+  var contentRevision: Int = 0
+    private set
+
   val isModified: Boolean
     get() = myModified
 
@@ -81,6 +85,22 @@ class Editor(
       Logger.error("Failed to save file: ${file.path}", e)
       false
     }
+  }
+
+  /**
+   * Reloads file content from disk into the document and clears the modified flag.
+   */
+  fun reloadFromDisk() {
+    if (myDisposed) return
+    val text = try {
+      file.contentsToString()
+    } catch (e: Exception) {
+      Logger.error("Failed to reload: ${file.path}", e)
+      return
+    }
+    document.setText(text)
+    myModified = false
+    contentRevision++
   }
 
   fun dispose() {
