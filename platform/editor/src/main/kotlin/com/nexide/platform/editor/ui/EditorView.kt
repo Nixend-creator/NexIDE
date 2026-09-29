@@ -68,6 +68,7 @@ import com.nexide.platform.core.settings.NexIdeSettings
 import com.nexide.platform.editor.Editor
 import com.nexide.platform.editor.completion.CompletionContributor
 import com.nexide.platform.editor.completion.LookupElement
+import com.nexide.platform.editor.format.CodeFormatter
 import com.nexide.platform.editor.syntax.SyntaxColors
 import com.nexide.platform.editor.syntax.SyntaxHighlighterRegistry
 import com.nexide.platform.plugin.filetype.FileTypeRegistry
@@ -244,6 +245,21 @@ fun EditorView(
     modifiedTick++
   }
 
+  fun formatDocument() {
+    val indent = NexIdeSettings.tabSize
+    val formatted = CodeFormatter.format(text, indent)
+    if (formatted == text) {
+      statusMessage = "Already formatted"
+      return
+    }
+    val caret = textFieldValue.selection.start.coerceIn(0, formatted.length)
+    editor.replaceText(formatted)
+    editor.undoManager.recordChange()
+    textFieldValue = TextFieldValue(formatted, TextRange(caret.coerceAtMost(formatted.length)))
+    statusMessage = "Formatted"
+    modifiedTick++
+  }
+
   val onTextChange: (TextFieldValue) -> Unit = { newValue ->
     if (newValue.text != textFieldValue.text) {
       editor.document.setText(newValue.text)
@@ -347,6 +363,11 @@ fun EditorView(
           }
           ctrlOrMeta && event.key == Key.Spacebar -> {
             showCompletion()
+            true
+          }
+          // Ctrl+Alt+L — Format
+          ctrlOrMeta && event.isAltPressed && event.key == Key.L -> {
+            formatDocument()
             true
           }
           event.key == Key.Escape && completionVisible -> {

@@ -551,6 +551,24 @@ fun main() {
             onClick = { findUsages() }
           )
         }
+        Menu("Code", mnemonic = 'C') {
+          Item(
+            "Reformat Code",
+            enabled = activeEditor != null,
+            onClick = {
+              val ed = activeEditor ?: return@Item
+              val indent = com.nexide.platform.core.settings.NexIdeSettings.tabSize
+              val formatted = com.nexide.platform.editor.format.CodeFormatter.format(
+                ed.document.getText(),
+                indent
+              )
+              if (formatted != ed.document.getText()) {
+                ed.replaceText(formatted)
+                Logger.info("Formatted: ${ed.file.name}")
+              }
+            }
+          )
+        }
         Menu("Refactor", mnemonic = 'T') {
           Item(
             "Rename…",
