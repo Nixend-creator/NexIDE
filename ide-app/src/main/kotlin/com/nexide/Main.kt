@@ -263,6 +263,17 @@ fun main() {
       activeEditor?.save()
     }
 
+    fun saveAll() {
+      var count = 0
+      openEditors.forEach { ed ->
+        if (ed.isModified) {
+          ed.save()
+          count++
+        }
+      }
+      Logger.info("Save All: $count file(s)")
+    }
+
     Window(
       onCloseRequest = {
         application.exit()
@@ -273,17 +284,59 @@ fun main() {
       onKeyEvent = { event ->
         if (event.type != KeyEventType.KeyDown) return@Window false
         val ctrlOrMeta = event.isCtrlPressed || event.isMetaPressed
+        val shift = event.isShiftPressed
         when {
+          // Ctrl+Shift+O — Open Project (also Ctrl+O)
           ctrlOrMeta && event.key == Key.O -> {
             chooseAndOpenProject()
             true
           }
+          // Ctrl+Shift+S — Save All
+          ctrlOrMeta && shift && event.key == Key.S -> {
+            saveAll()
+            true
+          }
+          // Ctrl+S — Save
           ctrlOrMeta && event.key == Key.S -> {
             saveActive()
             true
           }
-          ctrlOrMeta && event.isShiftPressed && event.key == Key.F -> {
+          // Ctrl+Shift+F — Find in Files
+          ctrlOrMeta && shift && event.key == Key.F -> {
             findInFilesVisible = true
+            true
+          }
+          // Ctrl+Shift+B / Ctrl+F9 — Build Project
+          (ctrlOrMeta && shift && event.key == Key.B) ||
+            (ctrlOrMeta && event.key == Key.F9) -> {
+            buildProject()
+            true
+          }
+          // Ctrl+Alt+S — Settings
+          ctrlOrMeta && event.isAltPressed && event.key == Key.S -> {
+            settingsVisible = true
+            true
+          }
+          // Ctrl+Shift+F12 — Problems
+          ctrlOrMeta && shift && event.key == Key.F12 -> {
+            problemsVisible = true
+            true
+          }
+          // F8 — Toggle breakpoint on line 1 fallback (gutter is primary)
+          event.key == Key.F8 && activeEditor != null -> {
+            val ed = activeEditor!!
+            BreakpointManager.getInstance().toggle(ed.file.path, 1)
+            breakpointsVisible = true
+            true
+          }
+          // Shift+F10 — Run selected configuration
+          shift && event.key == Key.F10 && runConfigManager.selected != null -> {
+            runConfigManager.selected?.let { runConfiguration(it, debug = false) }
+            true
+          }
+          // Shift+F9 — Debug selected configuration
+          shift && event.key == Key.F9 && runConfigManager.selected != null -> {
+            runConfigManager.selected?.let { runConfiguration(it, debug = true) }
             true
           }
           else -> false
@@ -313,6 +366,11 @@ fun main() {
             "Save",
             enabled = activeEditor != null,
             onClick = { saveActive() }
+          )
+          Item(
+            "Save All",
+            enabled = openEditors.any { it.isModified },
+            onClick = { saveAll() }
           )
           Separator()
           Item("Settings…", onClick = { settingsVisible = true })
