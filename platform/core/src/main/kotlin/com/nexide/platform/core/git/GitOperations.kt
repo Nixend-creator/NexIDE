@@ -95,6 +95,44 @@ object GitOperations {
     return if (result.success) result.output.trim().ifEmpty { null } else null
   }
 
+  fun pull(projectDir: File): GitCommandResult {
+    val root = GitStatusService.findGitRoot(projectDir)
+      ?: return GitCommandResult(false, "Not a git repository", -1)
+    return runGit(root, listOf("pull", "--no-edit"))
+  }
+
+  fun push(projectDir: File): GitCommandResult {
+    val root = GitStatusService.findGitRoot(projectDir)
+      ?: return GitCommandResult(false, "Not a git repository", -1)
+    return runGit(root, listOf("push"))
+  }
+
+  /**
+   * Short ahead/behind summary vs upstream, e.g. "↑2 ↓1" or null if unavailable.
+   */
+  fun remoteSyncSummary(projectDir: File): String? {
+    val root = GitStatusService.findGitRoot(projectDir) ?: return null
+    // Ensure upstream tracking info is available
+    val branch = currentBranch(projectDir) ?: return null
+    val count = runGit(
+      root,
+      listOf("rev-list", "--left-right", "--count", "@{upstream}...HEAD")
+    )
+    if (!count.success) return null
+    val parts = count.output.trim().split(Regex("\\s+"))
+    if (parts.size < 2) return null
+    val behind = parts[0].toIntOrNull() ?: return null
+    val ahead = parts[1].toIntOrNull() ?: return null
+    return buildString {
+      if (ahead > 0) append("↑$ahead")
+      if (behind > 0) {
+        if (isNotEmpty()) append(" ")
+        append("↓$behind")
+      }
+      if (isEmpty()) append("✓")
+    }
+  }
+
   /**
    * Returns unified diff for [relativePath].
    * If [staged] — index vs HEAD; otherwise working tree vs index.

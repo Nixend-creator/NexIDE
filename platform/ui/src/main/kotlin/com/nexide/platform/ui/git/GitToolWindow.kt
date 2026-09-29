@@ -81,6 +81,7 @@ fun GitToolWindow(
   var diffText by remember { mutableStateOf("") }
   var message by remember { mutableStateOf("") }
   var branch by remember { mutableStateOf<String?>(null) }
+  var syncSummary by remember { mutableStateOf<String?>(null) }
   var statusText by remember { mutableStateOf("") }
   var busy by remember { mutableStateOf(false) }
   var refreshTick by remember { mutableStateOf(0) }
@@ -107,9 +108,11 @@ fun GitToolWindow(
     executor.execute {
       val list = GitOperations.listChanges(projectDir)
       val b = GitOperations.currentBranch(projectDir)
+      val sync = GitOperations.remoteSyncSummary(projectDir)
       SwingUtilities.invokeLater {
         changes = list
         branch = b
+        syncSummary = sync
         selected = selected.intersect(list.map { it.relativePath }.toSet())
         if (focusedPath != null && list.none { it.relativePath == focusedPath }) {
           focusedPath = null
@@ -159,7 +162,11 @@ fun GitToolWindow(
       verticalAlignment = Alignment.CenterVertically
     ) {
       Text(
-        text = "Git" + (branch?.let { " ($it)" } ?: ""),
+        text = buildString {
+          append("Git")
+          branch?.let { append(" ($it)") }
+          syncSummary?.let { append(" $it") }
+        },
         style = MaterialTheme.typography.titleSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.weight(1f)
@@ -169,6 +176,22 @@ fun GitToolWindow(
         style = MaterialTheme.typography.labelSmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
       )
+      TextButton(
+        onClick = {
+          runOp("Pull") { GitOperations.pull(projectDir) }
+        },
+        enabled = !busy
+      ) {
+        Text("Pull", style = MaterialTheme.typography.labelMedium)
+      }
+      TextButton(
+        onClick = {
+          runOp("Push") { GitOperations.push(projectDir) }
+        },
+        enabled = !busy
+      ) {
+        Text("Push", style = MaterialTheme.typography.labelMedium)
+      }
       TextButton(onClick = { refreshTick++ }, enabled = !busy) {
         Text("↻", style = MaterialTheme.typography.labelLarge)
       }
