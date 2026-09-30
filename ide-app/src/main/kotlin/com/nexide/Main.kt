@@ -89,6 +89,8 @@ import com.nexide.platform.core.debug.SuspendedThreadInfo
 import javax.swing.SwingUtilities
 import com.nexide.platform.ui.settings.SettingsDialog
 import com.nexide.platform.ui.notify.NotificationHost
+import com.nexide.platform.ui.navigation.CommandPalette
+import com.nexide.platform.ui.navigation.PaletteAction
 import com.nexide.platform.ui.navigation.RecentFilesDialog
 import com.nexide.platform.ui.plugins.MarketplaceDialog
 import com.nexide.platform.util.Logger
@@ -126,6 +128,7 @@ fun main() {
     var splitEditor by mutableStateOf(IdeStateStore.splitEditor)
     var marketplaceVisible by mutableStateOf(false)
     var recentFilesVisible by mutableStateOf(false)
+    var commandPaletteVisible by mutableStateOf(false)
 
     var activeEditor by mutableStateOf<Editor?>(null)
     var selectedFile by mutableStateOf<VirtualFile?>(null)
@@ -493,6 +496,11 @@ fun main() {
             recentFilesVisible = true
             true
           }
+          // Ctrl+Shift+A — Command Palette
+          ctrlOrMeta && shift && event.key == Key.A -> {
+            commandPaletteVisible = true
+            true
+          }
           // Ctrl+Shift+S — Save All
           ctrlOrMeta && shift && event.key == Key.S -> {
             saveAll()
@@ -599,6 +607,7 @@ fun main() {
           gotoDeclaration = { gotoDeclaration() },
           findUsages = { findUsages() },
           recentFiles = { recentFilesVisible = true },
+          findAction = { commandPaletteVisible = true },
           reformat = {
             val ed = activeEditor
             if (ed != null) {
@@ -674,6 +683,65 @@ fun main() {
             if (vf != null && !vf.isDirectory) openFile(vf)
           },
           onDismiss = { recentFilesVisible = false }
+        )
+      }
+      if (commandPaletteVisible) {
+        val hasEd = activeEditor != null
+        CommandPalette(
+          actions = listOf(
+            PaletteAction("save", "Save", "Ctrl+S", hasEd) { saveActive() },
+            PaletteAction("save.all", "Save All", "Ctrl+Shift+S", openEditors.any { it.isModified }) { saveAll() },
+            PaletteAction("close.tab", "Close Tab", "Ctrl+W", hasEd) { activeEditor?.let { requestCloseEditor(it) } },
+            PaletteAction("close.all", "Close All Tabs", "Ctrl+Shift+W", openEditors.isNotEmpty()) { closeAllEditors() },
+            PaletteAction("recent.files", "Recent Files", "Ctrl+E") { recentFilesVisible = true },
+            PaletteAction("find.files", "Find in Files", "Ctrl+Shift+F") { findInFilesVisible = true },
+            PaletteAction("goto.decl", "Go to Declaration", "Ctrl+B", hasEd) { gotoDeclaration() },
+            PaletteAction("find.usages", "Find Usages", "Alt+F7", hasEd) { findUsages() },
+            PaletteAction("rename", "Rename…", "Shift+F6", hasEd) { startRename() },
+            PaletteAction("reformat", "Reformat Code", "Ctrl+Alt+L", hasEd) {
+              val ed = activeEditor ?: return@PaletteAction
+              val indent = com.nexide.platform.core.settings.NexIdeSettings.tabSize
+              val formatted = com.nexide.platform.editor.format.CodeFormatter.format(ed.document.getText(), indent)
+              if (formatted != ed.document.getText()) ed.replaceText(formatted)
+            },
+            PaletteAction("build", "Build Project") { buildProject() },
+            PaletteAction("problems", "Show Problems") { problemsVisible = true },
+            PaletteAction("run", "Run Selected Configuration", enabled = runConfigManager.selected != null) {
+              runConfigManager.selected?.let { runConfiguration(it, false) }
+            },
+            PaletteAction("debug", "Debug Selected Configuration", enabled = runConfigManager.selected != null) {
+              runConfigManager.selected?.let { runConfiguration(it, true) }
+            },
+            PaletteAction("stop", "Stop") {
+              processRunner.stop()
+              debugSessionManager.stop()
+              jdiConnector.detach()
+            },
+            PaletteAction("git", "Git Tool Window") { gitPanelVisible = true },
+            PaletteAction("terminal", "Terminal") { terminalVisible = true },
+            PaletteAction("structure", "Structure") { structureVisible = true },
+            PaletteAction("debug.panel", "Debug Tool Window") { debugPanelVisible = true },
+            PaletteAction("settings", "Settings…") { settingsVisible = true },
+            PaletteAction("plugins", "Plugins…") { marketplaceVisible = true },
+            PaletteAction("theme", "Toggle Dark Theme") {
+              darkTheme = !darkTheme
+              IdeStateStore.darkTheme = darkTheme
+              IdeStateStore.save()
+            },
+            PaletteAction("split", "Toggle Split Editor") {
+              splitEditor = !splitEditor
+              IdeStateStore.splitEditor = splitEditor
+              IdeStateStore.save()
+            },
+            PaletteAction("softwrap", "Toggle Soft Wrap") {
+              com.nexide.platform.core.settings.NexIdeSettings.softWrap =
+                !com.nexide.platform.core.settings.NexIdeSettings.softWrap
+              com.nexide.platform.core.settings.NexIdeSettings.save()
+              settingsRevision++
+            },
+            PaletteAction("open.project", "Open Project…", "Ctrl+O") { chooseAndOpenProject() }
+          ),
+          onDismiss = { commandPaletteVisible = false }
         )
       }
       if (marketplaceVisible) {
