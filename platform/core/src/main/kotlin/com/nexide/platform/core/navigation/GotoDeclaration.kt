@@ -16,6 +16,7 @@
 
 package com.nexide.platform.core.navigation
 
+import com.nexide.platform.core.index.SymbolIndex
 import java.io.File
 
 /**
@@ -77,6 +78,23 @@ object GotoDeclaration {
     maxResults: Int = 30
   ): List<NavigationTarget> {
     if (symbol.isBlank() || !projectRoot.isDirectory) return emptyList()
+    // Prefer symbol index (fast path)
+    try {
+      SymbolIndex.ensureIndexed(projectRoot)
+      val indexed = SymbolIndex.exact(symbol)
+      if (indexed.isNotEmpty()) {
+        return indexed.take(maxResults).map {
+          NavigationTarget(
+            filePath = it.filePath,
+            line = it.line,
+            column = 1,
+            matchText = "${it.kind} ${it.name}",
+            kind = "declaration"
+          )
+        }
+      }
+    } catch (_: Exception) {
+    }
     val declarations = mutableListOf<NavigationTarget>()
     val usages = mutableListOf<NavigationTarget>()
     val symbolRegex = Regex("""\b${Regex.escape(symbol)}\b""")
