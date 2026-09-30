@@ -29,6 +29,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -41,6 +42,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
@@ -268,17 +270,39 @@ fun DebugToolWindow(
         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
       )
     }
-    // Watches (evaluated when suspended)
-    if (attached) {
-      val watchResults = remember(suspended, attached) {
-        jdiConnector.evaluateWatches()
-      }
-      if (watchResults.isNotEmpty()) {
-        Text(
-          text = "Watches: " + watchResults.joinToString(" · ") { "${it.first}=${it.second}" },
-          style = MaterialTheme.typography.labelSmall,
-          modifier = Modifier.padding(horizontal = 8.dp)
-        )
+    // Watches editor row
+    var watchInput by remember { mutableStateOf("") }
+    var watchTick by remember { mutableStateOf(0) }
+    val watchResults = remember(suspended, attached, watchTick) {
+      jdiConnector.evaluateWatches()
+    }
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 8.dp, vertical = 2.dp),
+      verticalAlignment = Alignment.CenterVertically
+    ) {
+      Text("Watch:", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(end = 6.dp))
+      BasicTextField(
+        value = watchInput,
+        onValueChange = { watchInput = it },
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurface),
+        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+        modifier = Modifier
+          .weight(1f)
+          .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.small)
+          .padding(6.dp)
+      )
+      TextButton(
+        onClick = {
+          jdiConnector.addWatch(watchInput)
+          watchInput = ""
+          watchTick++
+        },
+        enabled = watchInput.isNotBlank()
+      ) {
+        Text("Add", style = MaterialTheme.typography.labelMedium)
       }
     }
 
@@ -310,6 +334,11 @@ fun DebugToolWindow(
       VerticalDivider()
       VariablesPane(
         variables = suspended?.variables.orEmpty(),
+        watches = watchResults,
+        onRemoveWatch = { expr ->
+          jdiConnector.removeWatch(expr)
+          watchTick++
+        },
         modifier = Modifier
           .weight(1f)
           .fillMaxHeight()
@@ -321,14 +350,48 @@ fun DebugToolWindow(
 @Composable
 private fun VariablesPane(
   variables: List<DebugVariable>,
+  watches: List<Pair<String, String>> = emptyList(),
+  onRemoveWatch: (String) -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   Column(modifier = modifier.padding(4.dp)) {
     Text(
-      text = "Variables",
+      text = "Watches",
       style = MaterialTheme.typography.labelMedium,
       color = MaterialTheme.colorScheme.onSurfaceVariant,
       modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+    )
+    if (watches.isEmpty()) {
+      Text(
+        text = "Add expression above (e.g. localName, this.field)",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
+      )
+    } else {
+      watches.forEach { (expr, value) ->
+        Row(
+          modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 1.dp),
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          Text(
+            text = "$expr = $value",
+            style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f)
+          )
+          TextButton(onClick = { onRemoveWatch(expr) }) {
+            Text("×", style = MaterialTheme.typography.labelSmall)
+          }
+        }
+      }
+    }
+    Text(
+      text = "Variables",
+      style = MaterialTheme.typography.labelMedium,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+      modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp)
     )
     if (variables.isEmpty()) {
       Text(
