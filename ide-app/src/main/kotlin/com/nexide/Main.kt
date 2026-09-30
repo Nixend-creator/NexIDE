@@ -92,6 +92,7 @@ import com.nexide.platform.ui.notify.NotificationHost
 import com.nexide.platform.ui.navigation.CommandPalette
 import com.nexide.platform.ui.navigation.PaletteAction
 import com.nexide.platform.ui.navigation.RecentFilesDialog
+import com.nexide.platform.ui.navigation.SearchEverywhereDialog
 import com.nexide.platform.ui.plugins.MarketplaceDialog
 import com.nexide.platform.util.Logger
 import java.io.File
@@ -129,6 +130,7 @@ fun main() {
     var marketplaceVisible by mutableStateOf(false)
     var recentFilesVisible by mutableStateOf(false)
     var commandPaletteVisible by mutableStateOf(false)
+    var searchEverywhereVisible by mutableStateOf(false)
 
     var activeEditor by mutableStateOf<Editor?>(null)
     var selectedFile by mutableStateOf<VirtualFile?>(null)
@@ -501,6 +503,11 @@ fun main() {
             commandPaletteVisible = true
             true
           }
+          // Ctrl+N — Search Everywhere
+          ctrlOrMeta && event.key == Key.N && !shift -> {
+            searchEverywhereVisible = true
+            true
+          }
           // Ctrl+Shift+S — Save All
           ctrlOrMeta && shift && event.key == Key.S -> {
             saveAll()
@@ -608,6 +615,7 @@ fun main() {
           findUsages = { findUsages() },
           recentFiles = { recentFilesVisible = true },
           findAction = { commandPaletteVisible = true },
+          searchEverywhere = { searchEverywhereVisible = true },
           reformat = {
             val ed = activeEditor
             if (ed != null) {
@@ -742,6 +750,17 @@ fun main() {
             PaletteAction("open.project", "Open Project…", "Ctrl+O") { chooseAndOpenProject() }
           ),
           onDismiss = { commandPaletteVisible = false }
+        )
+      }
+      if (searchEverywhereVisible) {
+        SearchEverywhereDialog(
+          projectRoot = File(project.basePath),
+          onOpenFile = { path, line ->
+            searchEverywhereVisible = false
+            val vf = LocalFileSystem.getInstance().findFileByPath(path)
+            if (vf != null && !vf.isDirectory) openFile(vf, line)
+          },
+          onDismiss = { searchEverywhereVisible = false }
         )
       }
       if (marketplaceVisible) {

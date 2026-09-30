@@ -39,6 +39,7 @@ data class IdeMenuActions(
   val findUsages: () -> Unit,
   val recentFiles: () -> Unit,
   val findAction: () -> Unit,
+  val searchEverywhere: () -> Unit,
   val reformat: () -> Unit,
   val restoreLocalHistory: () -> Unit,
   val rename: () -> Unit,
@@ -98,6 +99,7 @@ fun FrameWindowScope.IdeMenuBar(
       Item("Exit", onClick = actions.exit)
     }
     Menu("Navigate", mnemonic = 'N') {
+      Item("Search Everywhere", onClick = actions.searchEverywhere)
       Item("Find Action…", onClick = actions.findAction)
       Item("Recent Files", onClick = actions.recentFiles)
       Item("Go to Declaration", enabled = hasEditor, onClick = actions.gotoDeclaration)
