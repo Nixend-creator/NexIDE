@@ -68,6 +68,7 @@ import com.nexide.platform.core.git.GitDiffGutter
 import com.nexide.platform.core.git.GitOperations
 import com.nexide.platform.core.git.LineDiffType
 import com.nexide.platform.core.settings.NexIdeSettings
+import com.nexide.platform.editor.AutoPair
 import com.nexide.platform.editor.Editor
 import java.io.File
 import com.nexide.platform.editor.completion.CompletionContributor
@@ -489,13 +490,23 @@ fun EditorView(
   }
 
   val onTextChange: (TextFieldValue) -> Unit = { newValue ->
+    var value = newValue
     if (newValue.text != textFieldValue.text) {
-      editor.document.setText(newValue.text)
+      val paired = AutoPair.apply(
+        oldText = textFieldValue.text,
+        newText = newValue.text,
+        newCaret = newValue.selection.start
+      )
+      if (paired != null) {
+        val (pairedText, caret) = paired
+        value = TextFieldValue(pairedText, TextRange(caret))
+      }
+      editor.document.setText(value.text)
       editor.undoManager.recordChange()
       statusMessage = null
     }
-    textFieldValue = newValue
-    editor.caretOffset = newValue.selection.start
+    textFieldValue = value
+    editor.caretOffset = value.selection.start
     modifiedTick++
   }
 
