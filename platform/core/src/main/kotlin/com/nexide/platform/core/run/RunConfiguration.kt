@@ -98,6 +98,22 @@ class RunConfigurationManager {
         )
       )
     }
+    // Discover main classes → APPLICATION configs
+    try {
+      MainClassDiscovery.discover(projectDir).take(5).forEach { fqcn ->
+        val short = fqcn.substringAfterLast('.')
+        add(
+          RunConfiguration(
+            name = "Application: $short",
+            type = RunConfigurationType.APPLICATION,
+            mainClass = fqcn,
+            workingDir = projectDir.absolutePath
+          )
+        )
+      }
+    } catch (e: Exception) {
+      Logger.warn("Main class discovery failed: ${e.message}")
+    }
     mySelectedName = myConfigs.firstOrNull()?.name
   }
 
@@ -115,13 +131,20 @@ class RunConfigurationManager {
       }
       RunConfigurationType.APPLICATION -> {
         val main = config.mainClass.ifBlank { return null }
-        // Minimal: java -cp ... Main — classpath is hard without project model;
-        // use Gradle application plugin style as fallback via "run" is preferred.
-        // For APPLICATION we try: java with current classpath is unreliable.
-        // Launch via gradle if available: run with -PmainClass=
-        if (GradleRunSupport.isGradleProject(dir)) {
+        val cp = ApplicationClasspath.collect(dir)
+        if (cp.isNotBlank()) {
+          Logger.info("Application classpath entries: ${cp.split(File.pathSeparator).size}")
+          listOf("java", "-cp", cp, main)
+        } else if (GradleRunSupport.isGradleProject(dir)) {
+          // Fallback: Gradle application plugin / run task with main class property
           val gradle = GradleRunSupport.findGradleCommand(dir) ?: return null
-          gradle + listOf("run", "-PmainClass=$main", "--quiet")
+          gradle + listOf(
+            "run",
+            "-PmainClass=$main",
+            "-DmainClassName=$main",
+            "--args=",
+            "--quiet"
+          )
         } else {
           listOf("java", main)
         }
@@ -138,5 +161,95 @@ class RunConfigurationManager {
       }
       return ourInstance!!
     }
+  }
+}
+
+
+/**
+ * Scans sources for Kotlin/Java main entry points.
+ */
+object MainClassDiscovery {
+  private val KT_MAIN = Regex("""^\s*fun\s+main\s*\(""")
+  private val KT_PACKAGE = Regex("""^\s*package\s+([\w.]+)""")
+  private val JAVA_MAIN = Regex("""public\s+static\s+void\s+main\s*\(\s*String""")
+  private val JAVA_PACKAGE = Regex("""^\s*package\s+([\w.]+)\s*;""")
+  private val JAVA_CLASS = Regex("""\b(?:public\s+)?(?:final\s+)?class\s+(\w+)""")
+
+  fun discover(projectRoot: File, limit: Int = 20): List<String> {
+    val result = mutableListOf<String>()
+    val skip = setOf(".git", ".gradle", "build", "out", "node_modules", ".idea")
+    projectRoot.walkTopDown()
+      .onEnter { it.name !in skip }
+      .filter { it.isFile && it.extension in setOf("kt", "java") }
+      .filter { it.length() < 500_000 }
+      .forEach { file ->
+        if (result.size >= limit) return@forEach
+        try {
+          val lines = file.readLines(Charsets.UTF_8)
+          when (file.extension) {
+            "kt" -> {
+              if (lines.any { KT_MAIN.containsMatchIn(it) }) {
+                val pkg = lines.firstNotNullOfOrNull { KT_PACKAGE.find(it)?.groupValues?.get(1) }
+                val simple = file.nameWithoutExtension
+                result.add(if (pkg != null) "$pkg.$simple" else simple)
+              }
+            }
+            "java" -> {
+              if (lines.any { JAVA_MAIN.containsMatchIn(it) }) {
+                val pkg = lines.firstNotNullOfOrNull { JAVA_PACKAGE.find(it)?.groupValues?.get(1) }
+                val cls = lines.firstNotNullOfOrNull { JAVA_CLASS.find(it)?.groupValues?.get(1) }
+                  ?: file.nameWithoutExtension
+                result.add(if (pkg != null) "$pkg.$cls" else cls)
+              }
+            }
+          }
+        } catch (_: Exception) {
+        }
+      }
+    return result.distinct()
+  }
+}
+
+/**
+ * Builds a best-effort runtime classpath from Gradle output dirs and jars.
+ */
+object ApplicationClasspath {
+  fun collect(projectDir: File): String {
+    val paths = linkedSetOf<String>()
+    val skip = setOf(".git", ".gradle", "node_modules", ".idea")
+    // Prefer compiled output
+    listOf(
+      "build/classes/java/main",
+      "build/classes/kotlin/main",
+      "build/resources/main",
+      "out/production/classes",
+      "out/production/resources"
+    ).forEach { rel ->
+      val f = File(projectDir, rel)
+      if (f.isDirectory) paths.add(f.absolutePath)
+    }
+    // Module build dirs (multi-module)
+    projectDir.listFiles()?.filter { it.isDirectory && it.name !in skip }?.forEach { mod ->
+      listOf(
+        "build/classes/java/main",
+        "build/classes/kotlin/main",
+        "build/resources/main"
+      ).forEach { rel ->
+        val f = File(mod, rel)
+        if (f.isDirectory) paths.add(f.absolutePath)
+      }
+      val libs = File(mod, "build/libs")
+      if (libs.isDirectory) {
+        libs.listFiles()?.filter { it.extension == "jar" && !it.name.contains("-sources") }?.forEach {
+          paths.add(it.absolutePath)
+        }
+      }
+    }
+    val rootLibs = File(projectDir, "build/libs")
+    if (rootLibs.isDirectory) {
+      rootLibs.listFiles()?.filter { it.extension == "jar" }?.forEach { paths.add(it.absolutePath) }
+    }
+    val sep = File.pathSeparator
+    return paths.joinToString(sep)
   }
 }
