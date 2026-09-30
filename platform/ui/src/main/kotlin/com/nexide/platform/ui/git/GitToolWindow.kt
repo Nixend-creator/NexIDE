@@ -339,38 +339,187 @@ fun GitToolWindow(
   }
 }
 
+private data class SideBySideRow(
+  val left: String,
+  val right: String,
+  val leftKind: Char,  // ' ' context, '-' removed, empty spacer
+  val rightKind: Char  // ' ' context, '+' added, empty spacer
+)
+
+/** Best-effort parse of unified diff into aligned left/right rows. */
+private fun parseSideBySide(diffText: String): List<SideBySideRow> {
+  val rows = mutableListOf<SideBySideRow>()
+  val oldBuf = mutableListOf<String>()
+  val newBuf = mutableListOf<String>()
+
+  fun flush() {
+    val n = maxOf(oldBuf.size, newBuf.size)
+    for (i in 0 until n) {
+      val l = oldBuf.getOrNull(i)
+      val r = newBuf.getOrNull(i)
+      rows.add(
+        SideBySideRow(
+          left = l ?: "",
+          right = r ?: "",
+          leftKind = if (l != null) '-' else ' ',
+          rightKind = if (r != null) '+' else ' '
+        )
+      )
+    }
+    oldBuf.clear()
+    newBuf.clear()
+  }
+
+  for (raw in diffText.lineSequence()) {
+    when {
+      raw.startsWith("diff ") || raw.startsWith("index ") ||
+        raw.startsWith("---") || raw.startsWith("+++") -> {
+        flush()
+        rows.add(SideBySideRow(raw, raw, 'h', 'h'))
+      }
+      raw.startsWith("@@") -> {
+        flush()
+        rows.add(SideBySideRow(raw, raw, 'h', 'h'))
+      }
+      raw.startsWith("-") -> {
+        oldBuf.add(raw.removePrefix("-"))
+      }
+      raw.startsWith("+") -> {
+        newBuf.add(raw.removePrefix("+"))
+      }
+      raw.startsWith(" ") || raw.isEmpty() -> {
+        flush()
+        val body = if (raw.startsWith(" ")) raw.drop(1) else raw
+        rows.add(SideBySideRow(body, body, ' ', ' '))
+      }
+      else -> {
+        flush()
+        rows.add(SideBySideRow(raw, raw, 'h', 'h'))
+      }
+    }
+  }
+  flush()
+  return rows
+}
+
 @Composable
 private fun DiffPane(
   path: String?,
   diffText: String,
   modifier: Modifier = Modifier
 ) {
+  var sideBySide by remember { mutableStateOf(true) }
   val vScroll = rememberScrollState()
   val hScroll = rememberScrollState()
 
   Column(modifier = modifier.padding(8.dp)) {
-    Text(
-      text = path?.let { "Diff: $it" } ?: "Select a file to see diff",
-      style = MaterialTheme.typography.labelMedium,
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
-      maxLines = 1,
-      overflow = TextOverflow.Ellipsis
-    )
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      verticalAlignment = Alignment.CenterVertically
+    ) {
+      Text(
+        text = path?.let { "Diff: $it" } ?: "Select a file to see diff",
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier.weight(1f)
+      )
+      if (path != null) {
+        TextButton(onClick = { sideBySide = !sideBySide }) {
+          Text(
+            if (sideBySide) "Unified" else "Side-by-side",
+            style = MaterialTheme.typography.labelSmall
+          )
+        }
+      }
+    }
     Spacer(modifier = Modifier.padding(2.dp))
     if (path != null) {
-      val annotated = remember(diffText) { colorizeDiff(diffText) }
-      Text(
-        text = annotated,
-        style = MaterialTheme.typography.bodySmall.copy(
+      if (sideBySide) {
+        val rows = remember(diffText) { parseSideBySide(diffText) }
+        val mono = MaterialTheme.typography.bodySmall.copy(
           fontFamily = FontFamily.Monospace,
           fontSize = 11.sp,
           lineHeight = 15.sp
-        ),
-        modifier = Modifier
-          .fillMaxSize()
-          .verticalScroll(vScroll)
-          .horizontalScroll(hScroll)
-      )
+        )
+        Column(
+          modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(vScroll)
+            .horizontalScroll(hScroll)
+        ) {
+          Row(modifier = Modifier.fillMaxWidth()) {
+            Text(
+              "Old",
+              style = MaterialTheme.typography.labelSmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+              modifier = Modifier.weight(1f).padding(4.dp)
+            )
+            Text(
+              "New",
+              style = MaterialTheme.typography.labelSmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+              modifier = Modifier.weight(1f).padding(4.dp)
+            )
+          }
+          rows.forEach { row ->
+            if (row.leftKind == 'h') {
+              Text(
+                row.left,
+                style = mono.copy(color = Color(0xFFC586C0)),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp)
+              )
+            } else {
+              Row(modifier = Modifier.fillMaxWidth()) {
+                val leftBg = when (row.leftKind) {
+                  '-' -> Color(0x33F14C4C)
+                  else -> Color.Transparent
+                }
+                val rightBg = when (row.rightKind) {
+                  '+' -> Color(0x3389D185)
+                  else -> Color.Transparent
+                }
+                Text(
+                  text = row.left.ifEmpty { " " },
+                  style = mono.copy(
+                    color = if (row.leftKind == '-') Color(0xFFF14C4C) else Color(0xFFCCCCCC)
+                  ),
+                  modifier = Modifier
+                    .weight(1f)
+                    .background(leftBg)
+                    .padding(horizontal = 4.dp, vertical = 1.dp)
+                )
+                VerticalDivider()
+                Text(
+                  text = row.right.ifEmpty { " " },
+                  style = mono.copy(
+                    color = if (row.rightKind == '+') Color(0xFF89D185) else Color(0xFFCCCCCC)
+                  ),
+                  modifier = Modifier
+                    .weight(1f)
+                    .background(rightBg)
+                    .padding(horizontal = 4.dp, vertical = 1.dp)
+                )
+              }
+            }
+          }
+        }
+      } else {
+        val annotated = remember(diffText) { colorizeDiff(diffText) }
+        Text(
+          text = annotated,
+          style = MaterialTheme.typography.bodySmall.copy(
+            fontFamily = FontFamily.Monospace,
+            fontSize = 11.sp,
+            lineHeight = 15.sp
+          ),
+          modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(vScroll)
+            .horizontalScroll(hScroll)
+        )
+      }
     }
   }
 }
