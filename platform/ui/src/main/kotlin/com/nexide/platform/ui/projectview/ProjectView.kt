@@ -57,11 +57,19 @@ fun ProjectView(
   root: VirtualFile?,
   selectedFile: VirtualFile?,
   onFileSelected: (VirtualFile) -> Unit,
+  /** Ancestor paths to expand (e.g. Reveal in Project View). */
+  expandPaths: Set<String> = emptySet(),
   modifier: Modifier = Modifier
 ) {
   var expandedPaths by remember { mutableStateOf(setOf<String>()) }
   var gitSnapshot by remember { mutableStateOf(GitStatusSnapshot.EMPTY) }
   var refreshTick by remember { mutableStateOf(0) }
+
+  LaunchedEffect(expandPaths) {
+    if (expandPaths.isNotEmpty()) {
+      expandedPaths = expandedPaths + expandPaths
+    }
+  }
 
   // Load git status when root changes or user refreshes
   LaunchedEffect(root?.path, refreshTick) {

@@ -40,6 +40,10 @@ data class IdeMenuActions(
   val recentFiles: () -> Unit,
   val findAction: () -> Unit,
   val searchEverywhere: () -> Unit,
+  val copyAbsolutePath: () -> Unit,
+  val copyRelativePath: () -> Unit,
+  val copyFileName: () -> Unit,
+  val revealInProject: () -> Unit,
   val reformat: () -> Unit,
   val restoreLocalHistory: () -> Unit,
   val rename: () -> Unit,
@@ -107,6 +111,11 @@ fun FrameWindowScope.IdeMenuBar(
       Item("Recent Files", onClick = actions.recentFiles)
       Item("Go to Declaration", enabled = hasEditor, onClick = actions.gotoDeclaration)
       Item("Find Usages", enabled = hasEditor, onClick = actions.findUsages)
+      Separator()
+      Item("Reveal in Project View", enabled = hasEditor, onClick = actions.revealInProject)
+      Item("Copy Absolute Path", enabled = hasEditor, onClick = actions.copyAbsolutePath)
+      Item("Copy Relative Path", enabled = hasEditor, onClick = actions.copyRelativePath)
+      Item("Copy File Name", enabled = hasEditor, onClick = actions.copyFileName)
     }
     Menu("Code", mnemonic = 'C') {
       Item("Reformat Code", enabled = hasEditor, onClick = actions.reformat)

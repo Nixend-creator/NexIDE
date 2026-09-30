@@ -51,7 +51,8 @@ data class IdeUiState(
   val gitPanelVisible: Boolean = false,
   val breakpointsVisible: Boolean = false,
   val structureVisible: Boolean = false,
-  val findInFilesVisible: Boolean = false
+  val findInFilesVisible: Boolean = false,
+  val projectExpandPaths: Set<String> = emptySet()
 )
 
 /**

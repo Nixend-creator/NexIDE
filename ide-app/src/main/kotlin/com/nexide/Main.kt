@@ -95,6 +95,8 @@ import com.nexide.platform.ui.navigation.RecentFilesDialog
 import com.nexide.platform.ui.navigation.SearchEverywhereDialog
 import com.nexide.platform.ui.plugins.MarketplaceDialog
 import com.nexide.platform.util.Logger
+import java.awt.Toolkit
+import java.awt.datatransfer.StringSelection
 import java.io.File
 import javax.swing.JFileChooser
 import javax.swing.UIManager
@@ -131,6 +133,7 @@ fun main() {
     var recentFilesVisible by mutableStateOf(false)
     var commandPaletteVisible by mutableStateOf(false)
     var searchEverywhereVisible by mutableStateOf(false)
+    var projectExpandPaths by mutableStateOf<Set<String>>(emptySet())
 
     var activeEditor by mutableStateOf<Editor?>(null)
     var selectedFile by mutableStateOf<VirtualFile?>(null)
@@ -398,6 +401,46 @@ fun main() {
       activeEditor?.save()
     }
 
+    fun copyToClipboard(text: String, label: String) {
+      try {
+        Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
+        NotificationService.info("Copied", label)
+      } catch (e: Exception) {
+        NotificationService.warn("Copy failed", e.message ?: "")
+      }
+    }
+
+    fun copyActivePath(kind: String) {
+      val file = activeEditor?.file ?: selectedFile ?: return
+      val abs = file.path
+      val text = when (kind) {
+        "name" -> file.name
+        "relative" -> {
+          val root = project.basePath
+          if (abs.startsWith(root)) abs.removePrefix(root).trimStart('/', '\\') else abs
+        }
+        else -> abs
+      }
+      copyToClipboard(text, text)
+    }
+
+    fun revealInProjectView() {
+      val file = activeEditor?.file ?: return
+      selectedFile = file
+      val root = project.basePath
+      val ancestors = mutableSetOf<String>()
+      var f: java.io.File? = java.io.File(file.path).parentFile
+      val rootFile = java.io.File(root)
+      while (f != null) {
+        ancestors.add(f.absolutePath)
+        if (f.absolutePath == rootFile.absolutePath) break
+        f = f.parentFile
+      }
+      ancestors.add(root)
+      projectExpandPaths = ancestors
+      NotificationService.info("Project View", file.name)
+    }
+
     fun zoomEditor(delta: Int) {
       val next = (com.nexide.platform.core.settings.NexIdeSettings.editorFontSize + delta).coerceIn(10, 32)
       if (next != com.nexide.platform.core.settings.NexIdeSettings.editorFontSize) {
@@ -648,6 +691,10 @@ fun main() {
           recentFiles = { recentFilesVisible = true },
           findAction = { commandPaletteVisible = true },
           searchEverywhere = { searchEverywhereVisible = true },
+          copyAbsolutePath = { copyActivePath("absolute") },
+          copyRelativePath = { copyActivePath("relative") },
+          copyFileName = { copyActivePath("name") },
+          revealInProject = { revealInProjectView() },
           reformat = {
             val ed = activeEditor
             if (ed != null) {
@@ -785,7 +832,11 @@ fun main() {
             PaletteAction("open.project", "Open Project…", "Ctrl+O") { chooseAndOpenProject() },
             PaletteAction("zoom.in", "Zoom In", "Ctrl+=") { zoomEditor(1) },
             PaletteAction("zoom.out", "Zoom Out", "Ctrl+-") { zoomEditor(-1) },
-            PaletteAction("zoom.reset", "Reset Font Size", "Ctrl+0") { resetEditorZoom() }
+            PaletteAction("zoom.reset", "Reset Font Size", "Ctrl+0") { resetEditorZoom() },
+            PaletteAction("copy.path", "Copy Absolute Path", enabled = activeEditor != null) { copyActivePath("absolute") },
+            PaletteAction("copy.relative", "Copy Relative Path", enabled = activeEditor != null) { copyActivePath("relative") },
+            PaletteAction("copy.name", "Copy File Name", enabled = activeEditor != null) { copyActivePath("name") },
+            PaletteAction("reveal.project", "Reveal in Project View", enabled = activeEditor != null) { revealInProjectView() }
           ),
           onDismiss = { commandPaletteVisible = false }
         )
@@ -869,7 +920,8 @@ fun main() {
           gitPanelVisible = gitPanelVisible,
           breakpointsVisible = breakpointsVisible,
           structureVisible = structureVisible,
-          findInFilesVisible = findInFilesVisible
+          findInFilesVisible = findInFilesVisible,
+          projectExpandPaths = projectExpandPaths
         ),
         callbacks = IdeUiCallbacks(
           onRunPanelVisibleChange = { runPanelVisible = it },
@@ -955,6 +1007,7 @@ fun NexIdeApp(
   val breakpointsVisible = state.breakpointsVisible
   val structureVisible = state.structureVisible
   val findInFilesVisible = state.findInFilesVisible
+  val projectExpandPaths = state.projectExpandPaths
 
   val onRunPanelVisibleChange = callbacks.onRunPanelVisibleChange
   val onDebugPanelVisibleChange = callbacks.onDebugPanelVisibleChange
@@ -992,6 +1045,7 @@ fun NexIdeApp(
             root = project.baseDir,
             selectedFile = selectedFile,
             onFileSelected = onOpenFile,
+            expandPaths = projectExpandPaths,
             modifier = Modifier
               .width(280.dp)
               .fillMaxHeight()
