@@ -92,7 +92,6 @@ import com.nexide.platform.ui.settings.SettingsDialog
 import com.nexide.platform.ui.notify.NotificationHost
 import com.nexide.platform.ui.navigation.BookmarksDialog
 import com.nexide.platform.ui.navigation.CommandPalette
-import com.nexide.platform.ui.navigation.PaletteAction
 import com.nexide.platform.ui.navigation.RecentFilesDialog
 import com.nexide.platform.ui.navigation.SearchEverywhereDialog
 import com.nexide.platform.ui.plugins.MarketplaceDialog
@@ -848,71 +847,80 @@ fun main() {
         )
       }
       if (commandPaletteVisible) {
-        val hasEd = activeEditor != null
-        CommandPalette(
-          actions = listOf(
-            PaletteAction("save", "Save", "Ctrl+S", hasEd) { saveActive() },
-            PaletteAction("save.all", "Save All", "Ctrl+Shift+S", openEditors.any { it.isModified }) { saveAll() },
-            PaletteAction("close.tab", "Close Tab", "Ctrl+W", hasEd) { activeEditor?.let { requestCloseEditor(it) } },
-            PaletteAction("close.all", "Close All Tabs", "Ctrl+Shift+W", openEditors.isNotEmpty()) { closeAllEditors() },
-            PaletteAction("recent.files", "Recent Files", "Ctrl+E") { recentFilesVisible = true },
-            PaletteAction("find.files", "Find in Files", "Ctrl+Shift+F") { findInFilesVisible = true },
-            PaletteAction("goto.decl", "Go to Declaration", "Ctrl+B", hasEd) { gotoDeclaration() },
-            PaletteAction("find.usages", "Find Usages", "Alt+F7", hasEd) { findUsages() },
-            PaletteAction("rename", "Rename…", "Shift+F6", hasEd) { startRename() },
-            PaletteAction("reformat", "Reformat Code", "Ctrl+Alt+L", hasEd) {
-              val ed = activeEditor ?: return@PaletteAction
+        val actionState = IdeActionState(
+          hasEditor = activeEditor != null,
+          hasModified = openEditors.any { it.isModified },
+          hasTabs = openEditors.isNotEmpty(),
+          hasRunConfig = runConfigManager.selected != null
+        )
+        val handlers = IdeActionHandlers(
+          openProject = { chooseAndOpenProject() },
+          save = { saveActive() },
+          saveAll = { saveAll() },
+          closeTab = { activeEditor?.let { requestCloseEditor(it) } },
+          closeAllTabs = { closeAllEditors() },
+          recentFiles = { recentFilesVisible = true },
+          searchEverywhere = { searchEverywhereVisible = true },
+          findAction = { commandPaletteVisible = true },
+          findInFiles = { findInFilesVisible = true },
+          gotoDeclaration = { gotoDeclaration() },
+          findUsages = { findUsages() },
+          rename = { startRename() },
+          reformat = {
+            val ed = activeEditor
+            if (ed != null) {
               val indent = com.nexide.platform.core.settings.NexIdeSettings.tabSize
-              val formatted = com.nexide.platform.editor.format.CodeFormatter.format(ed.document.getText(), indent)
+              val formatted = com.nexide.platform.editor.format.CodeFormatter.format(
+                ed.document.getText(), indent
+              )
               if (formatted != ed.document.getText()) ed.replaceText(formatted)
-            },
-            PaletteAction("build", "Build Project") { buildProject() },
-            PaletteAction("problems", "Show Problems") { problemsVisible = true },
-            PaletteAction("run", "Run Selected Configuration", enabled = runConfigManager.selected != null) {
-              runConfigManager.selected?.let { runConfiguration(it, false) }
-            },
-            PaletteAction("debug", "Debug Selected Configuration", enabled = runConfigManager.selected != null) {
-              runConfigManager.selected?.let { runConfiguration(it, true) }
-            },
-            PaletteAction("stop", "Stop") {
-              processRunner.stop()
-              debugSessionManager.stop()
-              jdiConnector.detach()
-            },
-            PaletteAction("git", "Git Tool Window") { gitPanelVisible = true },
-            PaletteAction("terminal", "Terminal") { terminalVisible = true },
-            PaletteAction("structure", "Structure") { structureVisible = true },
-            PaletteAction("debug.panel", "Debug Tool Window") { debugPanelVisible = true },
-            PaletteAction("settings", "Settings…") { settingsVisible = true },
-            PaletteAction("plugins", "Plugins…") { marketplaceVisible = true },
-            PaletteAction("theme", "Toggle Dark Theme") {
-              darkTheme = !darkTheme
-              IdeStateStore.darkTheme = darkTheme
-              IdeStateStore.save()
-            },
-            PaletteAction("split", "Toggle Split Editor") {
-              splitEditor = !splitEditor
-              IdeStateStore.splitEditor = splitEditor
-              IdeStateStore.save()
-            },
-            PaletteAction("softwrap", "Toggle Soft Wrap") {
-              com.nexide.platform.core.settings.NexIdeSettings.softWrap =
-                !com.nexide.platform.core.settings.NexIdeSettings.softWrap
-              com.nexide.platform.core.settings.NexIdeSettings.save()
-              settingsRevision++
-            },
-            PaletteAction("open.project", "Open Project…", "Ctrl+O") { chooseAndOpenProject() },
-            PaletteAction("zoom.in", "Zoom In", "Ctrl+=") { zoomEditor(1) },
-            PaletteAction("zoom.out", "Zoom Out", "Ctrl+-") { zoomEditor(-1) },
-            PaletteAction("zoom.reset", "Reset Font Size", "Ctrl+0") { resetEditorZoom() },
-            PaletteAction("copy.path", "Copy Absolute Path", enabled = activeEditor != null) { copyActivePath("absolute") },
-            PaletteAction("copy.relative", "Copy Relative Path", enabled = activeEditor != null) { copyActivePath("relative") },
-            PaletteAction("copy.name", "Copy File Name", enabled = activeEditor != null) { copyActivePath("name") },
-            PaletteAction("reveal.project", "Reveal in Project View", enabled = activeEditor != null) { revealInProjectView() },
-            PaletteAction("bookmark.toggle", "Toggle Bookmark", "F11", activeEditor != null) { toggleBookmark() },
-            PaletteAction("bookmark.next", "Next Bookmark", "Shift+F11") { goToNextBookmark() },
-            PaletteAction("bookmark.list", "Show Bookmarks", "Ctrl+F11") { bookmarksVisible = true }
-          ),
+            }
+          },
+          build = { buildProject() },
+          showProblems = { problemsVisible = true },
+          runSelected = { runConfigManager.selected?.let { runConfiguration(it, false) } },
+          debugSelected = { runConfigManager.selected?.let { runConfiguration(it, true) } },
+          stop = {
+            processRunner.stop()
+            debugSessionManager.stop()
+            jdiConnector.detach()
+          },
+          showGit = { gitPanelVisible = true },
+          showTerminal = { terminalVisible = true },
+          showStructure = { structureVisible = true },
+          showDebug = { debugPanelVisible = true },
+          showBreakpoints = { breakpointsVisible = true },
+          openSettings = { settingsVisible = true },
+          openPlugins = { marketplaceVisible = true },
+          toggleTheme = {
+            darkTheme = !darkTheme
+            IdeStateStore.darkTheme = darkTheme
+            IdeStateStore.save()
+          },
+          toggleSplit = {
+            splitEditor = !splitEditor
+            IdeStateStore.splitEditor = splitEditor
+            IdeStateStore.save()
+          },
+          toggleSoftWrap = {
+            com.nexide.platform.core.settings.NexIdeSettings.softWrap =
+              !com.nexide.platform.core.settings.NexIdeSettings.softWrap
+            com.nexide.platform.core.settings.NexIdeSettings.save()
+            settingsRevision++
+          },
+          zoomIn = { zoomEditor(1) },
+          zoomOut = { zoomEditor(-1) },
+          zoomReset = { resetEditorZoom() },
+          copyAbsolutePath = { copyActivePath("absolute") },
+          copyRelativePath = { copyActivePath("relative") },
+          copyFileName = { copyActivePath("name") },
+          revealInProject = { revealInProjectView() },
+          toggleBookmark = { toggleBookmark() },
+          nextBookmark = { goToNextBookmark() },
+          showBookmarks = { bookmarksVisible = true }
+        )
+        CommandPalette(
+          actions = IdeActionCatalog.paletteActions(actionState, handlers),
           onDismiss = { commandPaletteVisible = false }
         )
       }
