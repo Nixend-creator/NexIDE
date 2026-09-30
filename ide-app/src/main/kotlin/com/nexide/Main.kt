@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -76,26 +75,19 @@ import com.nexide.platform.plugin.example.FILE_TYPE_EP
 import com.nexide.platform.ui.dialog.CloseConfirmResult
 import com.nexide.platform.ui.dialog.ConfirmCloseDialog
 import com.nexide.platform.plugin.filetype.FileTypeRegistry
-import com.nexide.platform.ui.git.GitToolWindow
 import com.nexide.platform.ui.projectview.ProjectView
-import com.nexide.platform.ui.build.ProblemsToolWindow
 import com.nexide.platform.ui.navigation.GotoTargetsDialog
 import com.nexide.platform.ui.refactor.RenameDialog
 import com.nexide.platform.ui.run.RunConfigDialog
-import com.nexide.platform.ui.run.RunToolWindow
-import com.nexide.platform.ui.search.FindInFilesPanel
 import com.nexide.platform.ui.search.SearchHit
 import com.nexide.platform.ui.structure.StructureToolWindow
 import com.nexide.platform.ui.tabs.EditorTabs
-import com.nexide.platform.ui.terminal.TerminalToolWindow
 import com.nexide.platform.core.debug.BreakpointManager
 import com.nexide.platform.core.debug.DebugSessionManager
 import com.nexide.platform.core.debug.JdiConnector
 import com.nexide.platform.core.debug.JdiListener
 import com.nexide.platform.core.debug.SuspendedThreadInfo
 import javax.swing.SwingUtilities
-import com.nexide.platform.ui.debug.BreakpointsToolWindow
-import com.nexide.platform.ui.debug.DebugToolWindow
 import com.nexide.platform.ui.settings.SettingsDialog
 import com.nexide.platform.ui.welcome.WelcomeScreen
 import com.nexide.platform.ui.notify.NotificationHost
@@ -934,74 +926,33 @@ fun NexIdeApp(
           }
         }
 
-        if (findInFilesVisible) {
-          HorizontalDivider()
-          FindInFilesPanel(
-            root = project.baseDir,
-            visible = true,
-            onClose = { onFindInFilesVisibleChange(false) },
-            onOpenHit = onOpenSearchHit,
-            modifier = Modifier.fillMaxWidth()
-          )
-        }
-        if (problemsVisible) {
-          HorizontalDivider()
-          ProblemsToolWindow(
-            problems = problems,
-            building = building,
-            visible = true,
-            onClose = { onProblemsVisibleChange(false) },
-            onNavigate = onNavigateProblem,
-            onRebuild = onRebuild,
-            modifier = Modifier.fillMaxWidth()
-          )
-        }
-        if (breakpointsVisible) {
-          HorizontalDivider()
-          BreakpointsToolWindow(
-            visible = true,
-            onClose = { onBreakpointsVisibleChange(false) },
-            onNavigate = onBreakpointNavigate,
-            modifier = Modifier.fillMaxWidth()
-          )
-        }
-        if (debugPanelVisible) {
-          HorizontalDivider()
-          DebugToolWindow(
-            sessionManager = debugSessionManager,
-            jdiConnector = jdiConnector,
-            visible = true,
-            onClose = { onDebugPanelVisibleChange(false) },
-            modifier = Modifier.fillMaxWidth()
-          )
-        }
-        if (runPanelVisible) {
-          HorizontalDivider()
-          RunToolWindow(
-            runner = processRunner,
-            visible = true,
-            onClose = { onRunPanelVisibleChange(false) },
-            modifier = Modifier.fillMaxWidth()
-          )
-        }
-        if (gitPanelVisible) {
-          HorizontalDivider()
-          GitToolWindow(
-            projectRoot = project.basePath,
-            visible = true,
-            onClose = { onGitPanelVisibleChange(false) },
-            modifier = Modifier.fillMaxWidth()
-          )
-        }
-        if (terminalVisible) {
-          HorizontalDivider()
-          TerminalToolWindow(
-            projectRoot = project.basePath,
-            visible = true,
-            onClose = { onTerminalVisibleChange(false) },
-            modifier = Modifier.fillMaxWidth()
-          )
-        }
+        IdeBottomPanels(
+          projectRoot = project.baseDir,
+          projectPath = project.basePath,
+          processRunner = processRunner,
+          debugSessionManager = debugSessionManager,
+          jdiConnector = jdiConnector,
+          problems = problems,
+          building = building,
+          findInFilesVisible = findInFilesVisible,
+          problemsVisible = problemsVisible,
+          breakpointsVisible = breakpointsVisible,
+          debugPanelVisible = debugPanelVisible,
+          runPanelVisible = runPanelVisible,
+          gitPanelVisible = gitPanelVisible,
+          terminalVisible = terminalVisible,
+          onFindInFilesVisibleChange = onFindInFilesVisibleChange,
+          onProblemsVisibleChange = onProblemsVisibleChange,
+          onBreakpointsVisibleChange = onBreakpointsVisibleChange,
+          onDebugPanelVisibleChange = onDebugPanelVisibleChange,
+          onRunPanelVisibleChange = onRunPanelVisibleChange,
+          onGitPanelVisibleChange = onGitPanelVisibleChange,
+          onTerminalVisibleChange = onTerminalVisibleChange,
+          onNavigateProblem = onNavigateProblem,
+          onRebuild = onRebuild,
+          onBreakpointNavigate = onBreakpointNavigate,
+          onOpenSearchHit = onOpenSearchHit
+        )
       }
     }
     // Toasts
