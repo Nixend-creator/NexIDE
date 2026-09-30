@@ -398,6 +398,23 @@ fun main() {
       activeEditor?.save()
     }
 
+    fun zoomEditor(delta: Int) {
+      val next = (com.nexide.platform.core.settings.NexIdeSettings.editorFontSize + delta).coerceIn(10, 32)
+      if (next != com.nexide.platform.core.settings.NexIdeSettings.editorFontSize) {
+        com.nexide.platform.core.settings.NexIdeSettings.editorFontSize = next
+        com.nexide.platform.core.settings.NexIdeSettings.save()
+        settingsRevision++
+        NotificationService.info("Font size", "${next}sp")
+      }
+    }
+
+    fun resetEditorZoom() {
+      com.nexide.platform.core.settings.NexIdeSettings.editorFontSize = 14
+      com.nexide.platform.core.settings.NexIdeSettings.save()
+      settingsRevision++
+      NotificationService.info("Font size", "14sp")
+    }
+
     fun persistSession() {
       IdeStateStore.lastProjectPath = project.basePath
       IdeStateStore.openTabs = openEditors.map { it.file.path }
@@ -506,6 +523,21 @@ fun main() {
           // Ctrl+N — Search Everywhere
           ctrlOrMeta && event.key == Key.N && !shift -> {
             searchEverywhereVisible = true
+            true
+          }
+          // Ctrl+= / Ctrl+Plus — zoom in
+          ctrlOrMeta && (event.key == Key.Equals || event.key == Key.Plus) -> {
+            zoomEditor(1)
+            true
+          }
+          // Ctrl+- — zoom out
+          ctrlOrMeta && event.key == Key.Minus -> {
+            zoomEditor(-1)
+            true
+          }
+          // Ctrl+0 — reset zoom
+          ctrlOrMeta && event.key == Key.Zero && !shift -> {
+            resetEditorZoom()
             true
           }
           // Ctrl+Shift+S — Save All
@@ -678,7 +710,10 @@ fun main() {
             IdeStateStore.splitEditor = splitEditor
             IdeStateStore.save()
           },
-          openPlugins = { marketplaceVisible = true }
+          openPlugins = { marketplaceVisible = true },
+          zoomIn = { zoomEditor(1) },
+          zoomOut = { zoomEditor(-1) },
+          zoomReset = { resetEditorZoom() }
         )
       )
 
@@ -747,7 +782,10 @@ fun main() {
               com.nexide.platform.core.settings.NexIdeSettings.save()
               settingsRevision++
             },
-            PaletteAction("open.project", "Open Project…", "Ctrl+O") { chooseAndOpenProject() }
+            PaletteAction("open.project", "Open Project…", "Ctrl+O") { chooseAndOpenProject() },
+            PaletteAction("zoom.in", "Zoom In", "Ctrl+=") { zoomEditor(1) },
+            PaletteAction("zoom.out", "Zoom Out", "Ctrl+-") { zoomEditor(-1) },
+            PaletteAction("zoom.reset", "Reset Font Size", "Ctrl+0") { resetEditorZoom() }
           ),
           onDismiss = { commandPaletteVisible = false }
         )

@@ -59,7 +59,10 @@ data class IdeMenuActions(
   val toggleSoftWrap: () -> Unit,
   val toggleDarkTheme: () -> Unit,
   val toggleSplit: () -> Unit,
-  val openPlugins: () -> Unit
+  val openPlugins: () -> Unit,
+  val zoomIn: () -> Unit,
+  val zoomOut: () -> Unit,
+  val zoomReset: () -> Unit
 )
 
 @Composable
@@ -145,6 +148,11 @@ fun FrameWindowScope.IdeMenuBar(
       Item(if (softWrap) "Soft Wrap ✓" else "Soft Wrap", onClick = actions.toggleSoftWrap)
       Item(if (darkTheme) "Dark Theme ✓" else "Dark Theme", onClick = actions.toggleDarkTheme)
       Item(if (splitEditor) "Split Editor ✓" else "Split Editor", onClick = actions.toggleSplit)
+      Separator()
+      Item("Zoom In", onClick = actions.zoomIn)
+      Item("Zoom Out", onClick = actions.zoomOut)
+      Item("Reset Font Size", onClick = actions.zoomReset)
+      Separator()
       Item("Plugins…", onClick = actions.openPlugins)
     }
   }
