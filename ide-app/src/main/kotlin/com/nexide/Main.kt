@@ -647,6 +647,13 @@ fun main() {
               Logger.info("Use Alt+Shift+Down in the editor to move lines")
             }
           )
+          Item(
+            "Delete Line",
+            enabled = activeEditor != null,
+            onClick = {
+              Logger.info("Use Ctrl+Shift+K in the editor to delete lines")
+            }
+          )
         }
         Menu("Refactor", mnemonic = 'T') {
           Item(

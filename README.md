@@ -59,6 +59,7 @@ Current capabilities:
 - Move line up/down (Alt+Shift+↑/↓)
 - Close tab / other / all (Ctrl+W, Ctrl+Shift+W)
 - Soft wrap (View menu / Settings)
+- Delete line (Ctrl+Shift+K)
 
 ## Tech Stack
 

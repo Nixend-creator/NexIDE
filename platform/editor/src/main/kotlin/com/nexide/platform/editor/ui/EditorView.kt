@@ -394,6 +394,32 @@ fun EditorView(
     modifiedTick++
   }
 
+  /**
+   * Deletes the current line or all lines intersecting the selection.
+   */
+  fun deleteLines() {
+    val sel = textFieldValue.selection
+    val start = minOf(sel.start, sel.end)
+    val end = maxOf(sel.start, sel.end)
+    val lineStart = text.lastIndexOf('\n', (start - 1).coerceAtLeast(0)).let {
+      if (it < 0) 0 else it + 1
+    }
+    val lineEnd = text.indexOf('\n', if (end > start) (end - 1).coerceAtLeast(0) else end).let {
+      if (it < 0) text.length else it
+    }
+    // Include trailing newline so the gap closes
+    val deleteEnd = if (lineEnd < text.length && text[lineEnd] == '\n') lineEnd + 1 else lineEnd
+    // If deleting last line without prior newline cleanup
+    val deleteStart = if (deleteEnd >= text.length && lineStart > 0) lineStart - 1 else lineStart
+    val newText = text.substring(0, deleteStart) + text.substring(deleteEnd)
+    val caret = deleteStart.coerceIn(0, newText.length)
+    editor.replaceText(newText)
+    editor.undoManager.recordChange()
+    textFieldValue = TextFieldValue(newText, TextRange(caret))
+    statusMessage = "Line deleted"
+    modifiedTick++
+  }
+
   val onTextChange: (TextFieldValue) -> Unit = { newValue ->
     if (newValue.text != textFieldValue.text) {
       editor.document.setText(newValue.text)
@@ -513,6 +539,11 @@ fun EditorView(
           // Ctrl+D — Duplicate line / selection
           ctrlOrMeta && event.key == Key.D && !event.isShiftPressed -> {
             duplicateLines()
+            true
+          }
+          // Ctrl+Shift+K — Delete line (Ctrl+Y is Redo)
+          ctrlOrMeta && event.isShiftPressed && event.key == Key.K -> {
+            deleteLines()
             true
           }
           // Alt+Shift+Up — Move line up
