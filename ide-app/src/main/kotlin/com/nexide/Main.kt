@@ -218,17 +218,6 @@ fun main() {
       processRunner.start(gradle + "build", dir)
     }
 
-    fun runGradle(task: String) {
-      val dir = File(project.basePath)
-      if (!GradleRunSupport.isGradleProject(dir)) {
-        Logger.warn("Not a Gradle project: ${dir.absolutePath}")
-        runPanelVisible = true
-        return
-      }
-      val gradle = GradleRunSupport.findGradleCommand(dir) ?: return
-      runPanelVisible = true
-      processRunner.start(gradle + task, dir)
-    }
 
     fun jumpToSource(info: SuspendedThreadInfo) {
       val name = info.sourceName ?: return
