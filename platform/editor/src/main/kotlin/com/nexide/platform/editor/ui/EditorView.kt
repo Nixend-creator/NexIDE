@@ -306,6 +306,36 @@ fun EditorView(
     modifiedTick++
   }
 
+  /**
+   * Duplicates the current line, or the selected lines, placing a copy below.
+   */
+  fun duplicateLines() {
+    val sel = textFieldValue.selection
+    val start = minOf(sel.start, sel.end)
+    val end = maxOf(sel.start, sel.end)
+    val lineStart = text.lastIndexOf('\n', (start - 1).coerceAtLeast(0)).let {
+      if (it < 0) 0 else it + 1
+    }
+    val lineEndExclusive = when {
+      end > start && end <= text.length && end > 0 && text[end - 1] == '\n' -> end
+      else -> {
+        val nl = text.indexOf('\n', if (end > start) (end - 1).coerceAtLeast(0) else end)
+        if (nl < 0) text.length else nl
+      }
+    }
+    val block = text.substring(lineStart, lineEndExclusive)
+    val hasTrailingNl = lineEndExclusive < text.length && text[lineEndExclusive] == '\n'
+    val after = if (hasTrailingNl) lineEndExclusive + 1 else lineEndExclusive
+    val chunk = if (block.endsWith("\n")) block else "$block\n"
+    val newText = text.substring(0, after) + chunk + text.substring(after)
+    val caret = (after + chunk.length - 1).coerceIn(0, newText.length)
+    editor.replaceText(newText)
+    editor.undoManager.recordChange()
+    textFieldValue = TextFieldValue(newText, TextRange(caret))
+    statusMessage = "Duplicated"
+    modifiedTick++
+  }
+
   val onTextChange: (TextFieldValue) -> Unit = { newValue ->
     if (newValue.text != textFieldValue.text) {
       editor.document.setText(newValue.text)
