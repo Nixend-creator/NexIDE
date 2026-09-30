@@ -228,18 +228,7 @@ fun main() {
         .firstOrNull { it.isFile && it.name == name }
         ?: return
       val file = LocalFileSystem.getInstance().findFileByPath(match.absolutePath) ?: return
-      selectedFile = file
-      val existing = openEditors.firstOrNull { it.file.path == file.path }
-      val editor = if (existing != null) {
-        activeEditor = existing
-        existing
-      } else {
-        val created = Editor.create(file)
-        openEditors.add(created)
-        activeEditor = created
-        created
-      }
-      pendingGoToLine = editor to line
+      openFile(file, line)
       Logger.info("Debug jump: ${match.name}:$line")
     }
 
@@ -289,6 +278,28 @@ fun main() {
         processRunner.start(command, dir)
       }
       Logger.info("${if (debug) "Debug" else "Run"}: ${config.name} → ${command.joinToString(" ")}")
+    }
+
+
+    /**
+     * Opens [file] in a tab (or focuses existing) and optionally jumps to [line] (1-based).
+     */
+    fun openFile(file: VirtualFile, line: Int? = null): Editor {
+      selectedFile = file
+      val existing = openEditors.firstOrNull { it.file.path == file.path }
+      val editor = if (existing != null) {
+        activeEditor = existing
+        existing
+      } else {
+        val created = Editor.create(file)
+        openEditors.add(created)
+        activeEditor = created
+        created
+      }
+      if (line != null && line > 0) {
+        pendingGoToLine = editor to line
+      }
+      return editor
     }
 
     fun doCloseEditor(editor: Editor) {
@@ -411,18 +422,7 @@ fun main() {
 
     fun navigateToTarget(target: NavigationTarget) {
       val file = LocalFileSystem.getInstance().findFileByPath(target.filePath) ?: return
-      selectedFile = file
-      val existing = openEditors.firstOrNull { it.file.path == file.path }
-      val editor = if (existing != null) {
-        activeEditor = existing
-        existing
-      } else {
-        val created = Editor.create(file)
-        openEditors.add(created)
-        activeEditor = created
-        created
-      }
-      pendingGoToLine = editor to target.line
+      openFile(file, target.line)
     }
 
     fun gotoDeclaration() {
@@ -734,18 +734,7 @@ fun main() {
           if (path != null) {
             val file = LocalFileSystem.getInstance().findFileByPath(path)
             if (file != null) {
-              selectedFile = file
-              val existing = openEditors.firstOrNull { it.file.path == file.path }
-              val editor = if (existing != null) {
-                activeEditor = existing
-                existing
-              } else {
-                val created = Editor.create(file)
-                openEditors.add(created)
-                activeEditor = created
-                created
-              }
-              pendingGoToLine = editor to (problem.line ?: 1)
+              openFile(file, problem.line)
             }
           }
         },
@@ -759,18 +748,7 @@ fun main() {
           val file = com.nexide.platform.core.vfs.LocalFileSystem.getInstance()
             .findFileByPath(filePath)
           if (file != null) {
-            selectedFile = file
-            val existing = openEditors.firstOrNull { it.file.path == file.path }
-            val editor = if (existing != null) {
-              activeEditor = existing
-              existing
-            } else {
-              val created = Editor.create(file)
-              openEditors.add(created)
-              activeEditor = created
-              created
-            }
-            pendingGoToLine = editor to line
+            openFile(file, line)
           }
         },
         structureVisible = structureVisible,
@@ -780,32 +758,9 @@ fun main() {
         settingsRevision = settingsRevision,
         pendingGoToLine = pendingGoToLine,
         onPendingGoToLineHandled = { pendingGoToLine = null },
-        onOpenFile = { file ->
-          selectedFile = file
-          val existing = openEditors.firstOrNull { it.file.path == file.path }
-          if (existing != null) {
-            activeEditor = existing
-          } else {
-            val editor = Editor.create(file)
-            openEditors.add(editor)
-            activeEditor = editor
-            Logger.info("Opened tab: ${file.path}")
-          }
-        },
-        onOpenSearchHit = { hit: SearchHit ->
-          selectedFile = hit.file
-          val existing = openEditors.firstOrNull { it.file.path == hit.file.path }
-          val editor = if (existing != null) {
-            activeEditor = existing
-            existing
-          } else {
-            val created = Editor.create(hit.file)
-            openEditors.add(created)
-            activeEditor = created
-            created
-          }
-          pendingGoToLine = editor to hit.lineNumber
-        },
+        onOpenFile = { file -> openFile(file) },
+
+        onOpenSearchHit = { hit: SearchHit -> openFile(hit.file, hit.lineNumber) },
         onNavigateToLine = { editor, line ->
           activeEditor = editor
           pendingGoToLine = editor to line
