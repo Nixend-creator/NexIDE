@@ -55,6 +55,7 @@ import com.nexide.platform.core.index.SymbolIndex
 import com.nexide.platform.core.notify.NotificationService
 import com.nexide.platform.core.history.LocalHistory
 import com.nexide.platform.core.Project
+import com.nexide.platform.core.RecentFiles
 import com.nexide.platform.core.RecentProjects
 import com.nexide.platform.core.build.Problem
 import com.nexide.platform.core.build.ProblemParser
@@ -88,6 +89,7 @@ import com.nexide.platform.core.debug.SuspendedThreadInfo
 import javax.swing.SwingUtilities
 import com.nexide.platform.ui.settings.SettingsDialog
 import com.nexide.platform.ui.notify.NotificationHost
+import com.nexide.platform.ui.navigation.RecentFilesDialog
 import com.nexide.platform.ui.plugins.MarketplaceDialog
 import com.nexide.platform.util.Logger
 import java.io.File
@@ -123,6 +125,7 @@ fun main() {
     var darkTheme by mutableStateOf(IdeStateStore.darkTheme)
     var splitEditor by mutableStateOf(IdeStateStore.splitEditor)
     var marketplaceVisible by mutableStateOf(false)
+    var recentFilesVisible by mutableStateOf(false)
 
     var activeEditor by mutableStateOf<Editor?>(null)
     var selectedFile by mutableStateOf<VirtualFile?>(null)
@@ -274,6 +277,7 @@ fun main() {
      * Opens [file] in a tab (or focuses existing) and optionally jumps to [line] (1-based).
      */
     fun openFile(file: VirtualFile, line: Int? = null): Editor {
+      RecentFiles.add(file.path)
       selectedFile = file
       val existing = openEditors.firstOrNull { it.file.path == file.path }
       val editor = if (existing != null) {
@@ -484,6 +488,11 @@ fun main() {
             chooseAndOpenProject()
             true
           }
+          // Ctrl+E — Recent Files
+          ctrlOrMeta && event.key == Key.E && !shift -> {
+            recentFilesVisible = true
+            true
+          }
           // Ctrl+Shift+S — Save All
           ctrlOrMeta && shift && event.key == Key.S -> {
             saveAll()
@@ -589,6 +598,7 @@ fun main() {
           },
           gotoDeclaration = { gotoDeclaration() },
           findUsages = { findUsages() },
+          recentFiles = { recentFilesVisible = true },
           reformat = {
             val ed = activeEditor
             if (ed != null) {
@@ -655,6 +665,17 @@ fun main() {
         )
       )
 
+      if (recentFilesVisible) {
+        RecentFilesDialog(
+          paths = RecentFiles.list(),
+          onSelect = { path ->
+            recentFilesVisible = false
+            val vf = LocalFileSystem.getInstance().findFileByPath(path)
+            if (vf != null && !vf.isDirectory) openFile(vf)
+          },
+          onDismiss = { recentFilesVisible = false }
+        )
+      }
       if (marketplaceVisible) {
         MarketplaceDialog(onDismiss = { marketplaceVisible = false })
       }
