@@ -52,7 +52,7 @@ class GitStatusSnapshot(
 ) {
   fun statusFor(absolutePath: String): GitFileStatus {
     val normalized = File(absolutePath).canonicalPath
-    return statuses[normalized] ?: CLEAN
+    return statuses[normalized] ?: GitFileStatus.CLEAN
   }
 
   fun statusFor(file: File): GitFileStatus = statusFor(file.canonicalPath)

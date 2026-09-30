@@ -14,19 +14,16 @@ allprojects {
 
 subprojects {
   plugins.withId("org.jetbrains.kotlin.jvm") {
-    // Ensure Java plugin is present for toolchain support
     apply(plugin = "java")
     extensions.configure<JavaPluginExtension> {
-      toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
-      }
+      sourceCompatibility = JavaVersion.VERSION_17
+      targetCompatibility = JavaVersion.VERSION_17
     }
   }
 
   tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
     compilerOptions {
-      jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_21)
-      freeCompilerArgs.add("-Xcontext-receivers")
+      jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
     }
   }
 }

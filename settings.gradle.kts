@@ -1,5 +1,3 @@
-rootProject.name = "NexIDE"
-
 pluginManagement {
   repositories {
     google()
@@ -9,6 +7,10 @@ pluginManagement {
   }
 }
 
+plugins {
+  id("org.gradle.toolchains.foojay-resolver-convention") version "0.9.0"
+}
+
 dependencyResolutionManagement {
   repositories {
     google()
@@ -16,6 +18,8 @@ dependencyResolutionManagement {
     maven("https://maven.pkg.jetbrains.space/public/p/compose/dev")
   }
 }
+
+rootProject.name = "NexIDE"
 
 include(
   ":platform:util",

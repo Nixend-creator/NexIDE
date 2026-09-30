@@ -22,6 +22,6 @@ tasks.withType<JavaCompile>().configureEach {
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
   compilerOptions {
-    freeCompilerArgs.add("-Xjdk-release=21")
+    freeCompilerArgs.add("-Xjdk-release=17")
   }
 }
