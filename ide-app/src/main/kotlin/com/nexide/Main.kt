@@ -405,9 +405,14 @@ fun main() {
       activeEditor?.save()
     }
 
+    fun lineNumberAt(text: String, offset: Int): Int {
+      val o = offset.coerceIn(0, text.length)
+      return text.substring(0, o).count { it == '\n' } + 1
+    }
+
     fun toggleBookmark() {
       val ed = activeEditor ?: return
-      val line = ed.document.getLineNumber(ed.caretOffset) + 1
+      val line = lineNumberAt(ed.document.getText(), ed.caretOffset)
       val added = Bookmarks.toggle(ed.file.path, line)
       bookmarksTick++
       NotificationService.info(
@@ -418,7 +423,7 @@ fun main() {
 
     fun goToNextBookmark() {
       val ed = activeEditor
-      val line = if (ed != null) ed.document.getLineNumber(ed.caretOffset) + 1 else 0
+      val line = if (ed != null) lineNumberAt(ed.document.getText(), ed.caretOffset) else 0
       val next = Bookmarks.next(ed?.file?.path, line) ?: run {
         NotificationService.warn("Bookmarks", "None")
         return
