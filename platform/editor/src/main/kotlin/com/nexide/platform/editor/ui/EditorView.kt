@@ -69,6 +69,7 @@ import com.nexide.platform.core.git.GitOperations
 import com.nexide.platform.core.git.LineDiffType
 import com.nexide.platform.core.settings.NexIdeSettings
 import com.nexide.platform.editor.AutoPair
+import com.nexide.platform.editor.BraceMatcher
 import com.nexide.platform.editor.Editor
 import java.io.File
 import com.nexide.platform.editor.completion.CompletionContributor
@@ -527,15 +528,28 @@ fun EditorView(
   val language = FileTypeRegistry.getLanguageByFileName(editor.file.name)
   val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
   val syntaxColors = if (isDark) SyntaxColors.Darcula else SyntaxColors.Light
-  val highlightedText = remember(text, language, isDark, findQuery, findIndex, findMatches, problemLines) {
+    val caretForBrace = textFieldValue.selection.start
+  val bracePair = remember(text, caretForBrace) {
+    BraceMatcher.findPair(text, caretForBrace)
+  }
+  val highlightedText = remember(text, language, isDark, findQuery, findIndex, findMatches, problemLines, bracePair) {
     val base = SyntaxHighlighterRegistry.highlightAsAnnotatedString(text, language, syntaxColors)
-    val needOverlay = problemLines.isNotEmpty() || (findQuery.isNotEmpty() && findMatches.isNotEmpty())
+    val needOverlay = problemLines.isNotEmpty() ||
+      (findQuery.isNotEmpty() && findMatches.isNotEmpty()) ||
+      bracePair != null
     if (!needOverlay) {
       base
     } else {
       buildAnnotatedString {
         append(base)
-        // Error / warning line backgrounds (subtle red wash)
+        bracePair?.let { (open, close) ->
+          val braceStyle = SpanStyle(
+            background = Color(0x6688AAFF),
+            fontWeight = FontWeight.Bold
+          )
+          if (open in text.indices) addStyle(braceStyle, open, open + 1)
+          if (close in text.indices) addStyle(braceStyle, close, close + 1)
+        }
         if (problemLines.isNotEmpty()) {
           var line = 1
           var lineStart = 0
@@ -543,9 +557,9 @@ fun EditorView(
           while (lineStart <= text.length) {
             val nl = text.indexOf('\n', lineStart).let { if (it < 0) text.length else it }
             if (line in problemLines) {
-              val end = nl.coerceAtMost(text.length).coerceAtLeast(lineStart)
-              if (end > lineStart) {
-                addStyle(SpanStyle(background = errorBg), lineStart, end)
+              val endOff = nl.coerceAtMost(text.length).coerceAtLeast(lineStart)
+              if (endOff > lineStart) {
+                addStyle(SpanStyle(background = errorBg), lineStart, endOff)
               }
             }
             if (nl >= text.length) break
@@ -553,17 +567,12 @@ fun EditorView(
             line++
           }
         }
-        // Find match overlays on top
         if (findQuery.isNotEmpty() && findMatches.isNotEmpty()) {
           val matchLen = findQuery.length
           findMatches.forEachIndexed { i, start ->
-            val end = (start + matchLen).coerceAtMost(text.length)
-            val bg = if (i == findIndex) {
-              Color(0x88FF9800)
-            } else {
-              Color(0x55FFEB3B)
-            }
-            addStyle(SpanStyle(background = bg), start, end)
+            val endOff = (start + matchLen).coerceAtMost(text.length)
+            val bg = if (i == findIndex) Color(0x88FF9800) else Color(0x55FFEB3B)
+            addStyle(SpanStyle(background = bg), start, endOff)
           }
         }
       }
