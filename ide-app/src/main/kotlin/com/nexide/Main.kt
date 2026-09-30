@@ -582,6 +582,20 @@ fun main() {
               Logger.info("Use Ctrl+D in the editor to duplicate lines")
             }
           )
+          Item(
+            "Move Line Up",
+            enabled = activeEditor != null,
+            onClick = {
+              Logger.info("Use Alt+Shift+Up in the editor to move lines")
+            }
+          )
+          Item(
+            "Move Line Down",
+            enabled = activeEditor != null,
+            onClick = {
+              Logger.info("Use Alt+Shift+Down in the editor to move lines")
+            }
+          )
         }
         Menu("Refactor", mnemonic = 'T') {
           Item(

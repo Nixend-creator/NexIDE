@@ -56,6 +56,7 @@ Current capabilities:
 - Git diff gutter (green = added, blue = modified)
 - Comment / uncomment lines (Ctrl+/)
 - Duplicate line (Ctrl+D)
+- Move line up/down (Alt+Shift+↑/↓)
 
 ## Tech Stack
 

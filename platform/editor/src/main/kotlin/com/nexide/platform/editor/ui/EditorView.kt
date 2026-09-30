@@ -514,6 +514,16 @@ fun EditorView(
             duplicateLines()
             true
           }
+          // Alt+Shift+Up — Move line up
+          event.isAltPressed && event.isShiftPressed && event.key == Key.DirectionUp -> {
+            moveLines(up = true)
+            true
+          }
+          // Alt+Shift+Down — Move line down
+          event.isAltPressed && event.isShiftPressed && event.key == Key.DirectionDown -> {
+            moveLines(up = false)
+            true
+          }
           event.key == Key.Escape && completionVisible -> {
             completionVisible = false
             true
