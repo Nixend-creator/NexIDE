@@ -516,23 +516,44 @@ fun EditorView(
   val language = FileTypeRegistry.getLanguageByFileName(editor.file.name)
   val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
   val syntaxColors = if (isDark) SyntaxColors.Darcula else SyntaxColors.Light
-  val highlightedText = remember(text, language, isDark, findQuery, findIndex, findMatches) {
+  val highlightedText = remember(text, language, isDark, findQuery, findIndex, findMatches, problemLines) {
     val base = SyntaxHighlighterRegistry.highlightAsAnnotatedString(text, language, syntaxColors)
-    if (findQuery.isEmpty() || findMatches.isEmpty()) {
+    val needOverlay = problemLines.isNotEmpty() || (findQuery.isNotEmpty() && findMatches.isNotEmpty())
+    if (!needOverlay) {
       base
     } else {
-      // Overlay find match backgrounds on top of syntax colors
       buildAnnotatedString {
         append(base)
-        val matchLen = findQuery.length
-        findMatches.forEachIndexed { i, start ->
-          val end = (start + matchLen).coerceAtMost(text.length)
-          val bg = if (i == findIndex) {
-            Color(0x88FF9800) // current match — stronger orange
-          } else {
-            Color(0x55FFEB3B) // other matches — yellow
+        // Error / warning line backgrounds (subtle red wash)
+        if (problemLines.isNotEmpty()) {
+          var line = 1
+          var lineStart = 0
+          val errorBg = Color(0x44F44336)
+          while (lineStart <= text.length) {
+            val nl = text.indexOf('\n', lineStart).let { if (it < 0) text.length else it }
+            if (line in problemLines) {
+              val end = nl.coerceAtMost(text.length).coerceAtLeast(lineStart)
+              if (end > lineStart) {
+                addStyle(SpanStyle(background = errorBg), lineStart, end)
+              }
+            }
+            if (nl >= text.length) break
+            lineStart = nl + 1
+            line++
           }
-          addStyle(SpanStyle(background = bg), start, end)
+        }
+        // Find match overlays on top
+        if (findQuery.isNotEmpty() && findMatches.isNotEmpty()) {
+          val matchLen = findQuery.length
+          findMatches.forEachIndexed { i, start ->
+            val end = (start + matchLen).coerceAtMost(text.length)
+            val bg = if (i == findIndex) {
+              Color(0x88FF9800)
+            } else {
+              Color(0x55FFEB3B)
+            }
+            addStyle(SpanStyle(background = bg), start, end)
+          }
         }
       }
     }
