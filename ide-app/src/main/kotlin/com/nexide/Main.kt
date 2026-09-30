@@ -712,84 +712,82 @@ fun main() {
       }
 
       NexIdeApp(
-        project = project,
-        openEditors = openEditors,
-        activeEditor = activeEditor,
-        selectedFile = selectedFile,
-        pendingCloseEditor = pendingCloseEditor,
-        processRunner = processRunner,
-        debugSessionManager = debugSessionManager,
-        jdiConnector = jdiConnector,
-        runPanelVisible = runPanelVisible,
-        onRunPanelVisibleChange = { runPanelVisible = it },
-        debugPanelVisible = debugPanelVisible,
-        onDebugPanelVisibleChange = { debugPanelVisible = it },
-        problemsVisible = problemsVisible,
-        onProblemsVisibleChange = { problemsVisible = it },
-        problems = problems,
-        building = building,
-        onRebuild = { buildProject() },
-        onNavigateProblem = { problem ->
-          val path = problem.filePath
-          if (path != null) {
-            val file = LocalFileSystem.getInstance().findFileByPath(path)
-            if (file != null) {
-              openFile(file, problem.line)
+        state = IdeUiState(
+          project = project,
+          openEditors = openEditors,
+          activeEditor = activeEditor,
+          selectedFile = selectedFile,
+          pendingCloseEditor = pendingCloseEditor,
+          processRunner = processRunner,
+          debugSessionManager = debugSessionManager,
+          jdiConnector = jdiConnector,
+          problems = problems,
+          building = building,
+          settingsRevision = settingsRevision,
+          pendingGoToLine = pendingGoToLine,
+          darkTheme = darkTheme,
+          splitEditor = splitEditor,
+          runPanelVisible = runPanelVisible,
+          debugPanelVisible = debugPanelVisible,
+          problemsVisible = problemsVisible,
+          terminalVisible = terminalVisible,
+          gitPanelVisible = gitPanelVisible,
+          breakpointsVisible = breakpointsVisible,
+          structureVisible = structureVisible,
+          findInFilesVisible = findInFilesVisible
+        ),
+        callbacks = IdeUiCallbacks(
+          onRunPanelVisibleChange = { runPanelVisible = it },
+          onDebugPanelVisibleChange = { debugPanelVisible = it },
+          onProblemsVisibleChange = { problemsVisible = it },
+          onRebuild = { buildProject() },
+          onNavigateProblem = { problem ->
+            val path = problem.filePath
+            if (path != null) {
+              val file = LocalFileSystem.getInstance().findFileByPath(path)
+              if (file != null) openFile(file, problem.line)
+            }
+          },
+          onTerminalVisibleChange = { terminalVisible = it },
+          onGitPanelVisibleChange = { gitPanelVisible = it },
+          onBreakpointsVisibleChange = { breakpointsVisible = it },
+          onBreakpointNavigate = { filePath, line ->
+            val file = LocalFileSystem.getInstance().findFileByPath(filePath)
+            if (file != null) openFile(file, line)
+          },
+          onStructureVisibleChange = { structureVisible = it },
+          onFindInFilesVisibleChange = { findInFilesVisible = it },
+          onPendingGoToLineHandled = { pendingGoToLine = null },
+          onOpenFile = { file -> openFile(file) },
+          onOpenSearchHit = { hit -> openFile(hit.file, hit.lineNumber) },
+          onNavigateToLine = { editor, line ->
+            activeEditor = editor
+            pendingGoToLine = editor to line
+          },
+          onOpenProject = { chooseAndOpenProject() },
+          onOpenRecent = { path -> openProjectFromPath(path) },
+          onSelectEditor = {
+            activeEditor = it
+            selectedFile = it.file
+          },
+          onRequestClose = { editor -> requestCloseEditor(editor) },
+          onCloseConfirm = { editor, result ->
+            when (result) {
+              CloseConfirmResult.SAVE -> {
+                editor.save()
+                doCloseEditor(editor)
+                pendingCloseEditor = null
+              }
+              CloseConfirmResult.DONT_SAVE -> {
+                doCloseEditor(editor)
+                pendingCloseEditor = null
+              }
+              CloseConfirmResult.CANCEL -> {
+                pendingCloseEditor = null
+              }
             }
           }
-        },
-        terminalVisible = terminalVisible,
-        onTerminalVisibleChange = { terminalVisible = it },
-        gitPanelVisible = gitPanelVisible,
-        onGitPanelVisibleChange = { gitPanelVisible = it },
-        breakpointsVisible = breakpointsVisible,
-        onBreakpointsVisibleChange = { breakpointsVisible = it },
-        onBreakpointNavigate = { filePath, line ->
-          val file = com.nexide.platform.core.vfs.LocalFileSystem.getInstance()
-            .findFileByPath(filePath)
-          if (file != null) {
-            openFile(file, line)
-          }
-        },
-        structureVisible = structureVisible,
-        onStructureVisibleChange = { structureVisible = it },
-        findInFilesVisible = findInFilesVisible,
-        onFindInFilesVisibleChange = { findInFilesVisible = it },
-        settingsRevision = settingsRevision,
-        pendingGoToLine = pendingGoToLine,
-        onPendingGoToLineHandled = { pendingGoToLine = null },
-        onOpenFile = { file -> openFile(file) },
-
-        onOpenSearchHit = { hit: SearchHit -> openFile(hit.file, hit.lineNumber) },
-        onNavigateToLine = { editor, line ->
-          activeEditor = editor
-          pendingGoToLine = editor to line
-        },
-        onOpenProject = { chooseAndOpenProject() },
-        onOpenRecent = { path -> openProjectFromPath(path) },
-        onSelectEditor = {
-          activeEditor = it
-          selectedFile = it.file
-        },
-        darkTheme = darkTheme,
-        splitEditor = splitEditor,
-        onRequestClose = { editor -> requestCloseEditor(editor) },
-        onCloseConfirm = { editor, result ->
-          when (result) {
-            CloseConfirmResult.SAVE -> {
-              editor.save()
-              doCloseEditor(editor)
-              pendingCloseEditor = null
-            }
-            CloseConfirmResult.DONT_SAVE -> {
-              doCloseEditor(editor)
-              pendingCloseEditor = null
-            }
-            CloseConfirmResult.CANCEL -> {
-              pendingCloseEditor = null
-            }
-          }
-        }
+        )
       )
     }
   }
@@ -797,49 +795,52 @@ fun main() {
 
 @Composable
 fun NexIdeApp(
-  project: Project,
-  openEditors: List<Editor>,
-  activeEditor: Editor?,
-  selectedFile: VirtualFile?,
-  pendingCloseEditor: Editor?,
-  processRunner: ProcessRunner,
-  debugSessionManager: DebugSessionManager,
-  jdiConnector: JdiConnector,
-  runPanelVisible: Boolean,
-  onRunPanelVisibleChange: (Boolean) -> Unit,
-  debugPanelVisible: Boolean = false,
-  onDebugPanelVisibleChange: (Boolean) -> Unit = {},
-  problemsVisible: Boolean = false,
-  onProblemsVisibleChange: (Boolean) -> Unit = {},
-  problems: List<Problem> = emptyList(),
-  building: Boolean = false,
-  onRebuild: () -> Unit = {},
-  onNavigateProblem: (Problem) -> Unit = {},
-  terminalVisible: Boolean,
-  onTerminalVisibleChange: (Boolean) -> Unit,
-  gitPanelVisible: Boolean,
-  onGitPanelVisibleChange: (Boolean) -> Unit,
-  breakpointsVisible: Boolean = false,
-  onBreakpointsVisibleChange: (Boolean) -> Unit = {},
-  onBreakpointNavigate: (filePath: String, line: Int) -> Unit = { _, _ -> },
-  structureVisible: Boolean,
-  onStructureVisibleChange: (Boolean) -> Unit,
-  findInFilesVisible: Boolean,
-  onFindInFilesVisibleChange: (Boolean) -> Unit,
-  settingsRevision: Int = 0,
-  pendingGoToLine: Pair<Editor, Int>?,
-  onPendingGoToLineHandled: () -> Unit,
-  onOpenFile: (VirtualFile) -> Unit,
-  onOpenSearchHit: (SearchHit) -> Unit,
-  onNavigateToLine: (Editor, Int) -> Unit,
-  onOpenProject: () -> Unit,
-  onOpenRecent: (String) -> Unit,
-  onSelectEditor: (Editor) -> Unit,
-  onRequestClose: (Editor) -> Unit,
-  onCloseConfirm: (Editor, CloseConfirmResult) -> Unit,
-  darkTheme: Boolean = true,
-  splitEditor: Boolean = false
+  state: IdeUiState,
+  callbacks: IdeUiCallbacks
 ) {
+  val project = state.project
+  val openEditors = state.openEditors
+  val activeEditor = state.activeEditor
+  val selectedFile = state.selectedFile
+  val pendingCloseEditor = state.pendingCloseEditor
+  val processRunner = state.processRunner
+  val debugSessionManager = state.debugSessionManager
+  val jdiConnector = state.jdiConnector
+  val problems = state.problems
+  val building = state.building
+  val settingsRevision = state.settingsRevision
+  val pendingGoToLine = state.pendingGoToLine
+  val darkTheme = state.darkTheme
+  val splitEditor = state.splitEditor
+  val runPanelVisible = state.runPanelVisible
+  val debugPanelVisible = state.debugPanelVisible
+  val problemsVisible = state.problemsVisible
+  val terminalVisible = state.terminalVisible
+  val gitPanelVisible = state.gitPanelVisible
+  val breakpointsVisible = state.breakpointsVisible
+  val structureVisible = state.structureVisible
+  val findInFilesVisible = state.findInFilesVisible
+
+  val onRunPanelVisibleChange = callbacks.onRunPanelVisibleChange
+  val onDebugPanelVisibleChange = callbacks.onDebugPanelVisibleChange
+  val onProblemsVisibleChange = callbacks.onProblemsVisibleChange
+  val onRebuild = callbacks.onRebuild
+  val onNavigateProblem = callbacks.onNavigateProblem
+  val onTerminalVisibleChange = callbacks.onTerminalVisibleChange
+  val onGitPanelVisibleChange = callbacks.onGitPanelVisibleChange
+  val onBreakpointsVisibleChange = callbacks.onBreakpointsVisibleChange
+  val onBreakpointNavigate = callbacks.onBreakpointNavigate
+  val onStructureVisibleChange = callbacks.onStructureVisibleChange
+  val onFindInFilesVisibleChange = callbacks.onFindInFilesVisibleChange
+  val onPendingGoToLineHandled = callbacks.onPendingGoToLineHandled
+  val onOpenFile = callbacks.onOpenFile
+  val onOpenSearchHit = callbacks.onOpenSearchHit
+  val onNavigateToLine = callbacks.onNavigateToLine
+  val onOpenProject = callbacks.onOpenProject
+  val onOpenRecent = callbacks.onOpenRecent
+  val onSelectEditor = callbacks.onSelectEditor
+  val onRequestClose = callbacks.onRequestClose
+  val onCloseConfirm = callbacks.onCloseConfirm
   val colors = if (darkTheme) darkColorScheme() else lightColorScheme()
   MaterialTheme(colorScheme = colors) {
     Box(Modifier.fillMaxSize()) {
