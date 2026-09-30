@@ -44,6 +44,9 @@ data class IdeMenuActions(
   val copyRelativePath: () -> Unit,
   val copyFileName: () -> Unit,
   val revealInProject: () -> Unit,
+  val toggleBookmark: () -> Unit,
+  val nextBookmark: () -> Unit,
+  val showBookmarks: () -> Unit,
   val reformat: () -> Unit,
   val restoreLocalHistory: () -> Unit,
   val rename: () -> Unit,
@@ -113,6 +116,11 @@ fun FrameWindowScope.IdeMenuBar(
       Item("Find Usages", enabled = hasEditor, onClick = actions.findUsages)
       Separator()
       Item("Reveal in Project View", enabled = hasEditor, onClick = actions.revealInProject)
+      Separator()
+      Item("Toggle Bookmark", enabled = hasEditor, onClick = actions.toggleBookmark)
+      Item("Next Bookmark", onClick = actions.nextBookmark)
+      Item("Show Bookmarks", onClick = actions.showBookmarks)
+      Separator()
       Item("Copy Absolute Path", enabled = hasEditor, onClick = actions.copyAbsolutePath)
       Item("Copy Relative Path", enabled = hasEditor, onClick = actions.copyRelativePath)
       Item("Copy File Name", enabled = hasEditor, onClick = actions.copyFileName)

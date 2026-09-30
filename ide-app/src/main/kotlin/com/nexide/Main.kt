@@ -55,6 +55,7 @@ import com.nexide.platform.core.index.SymbolIndex
 import com.nexide.platform.core.notify.NotificationService
 import com.nexide.platform.core.history.LocalHistory
 import com.nexide.platform.core.Project
+import com.nexide.platform.core.Bookmarks
 import com.nexide.platform.core.RecentFiles
 import com.nexide.platform.core.RecentProjects
 import com.nexide.platform.core.build.Problem
@@ -89,6 +90,7 @@ import com.nexide.platform.core.debug.SuspendedThreadInfo
 import javax.swing.SwingUtilities
 import com.nexide.platform.ui.settings.SettingsDialog
 import com.nexide.platform.ui.notify.NotificationHost
+import com.nexide.platform.ui.navigation.BookmarksDialog
 import com.nexide.platform.ui.navigation.CommandPalette
 import com.nexide.platform.ui.navigation.PaletteAction
 import com.nexide.platform.ui.navigation.RecentFilesDialog
@@ -134,6 +136,8 @@ fun main() {
     var commandPaletteVisible by mutableStateOf(false)
     var searchEverywhereVisible by mutableStateOf(false)
     var projectExpandPaths by mutableStateOf<Set<String>>(emptySet())
+    var bookmarksVisible by mutableStateOf(false)
+    var bookmarksTick by mutableStateOf(0)
 
     var activeEditor by mutableStateOf<Editor?>(null)
     var selectedFile by mutableStateOf<VirtualFile?>(null)
@@ -401,6 +405,28 @@ fun main() {
       activeEditor?.save()
     }
 
+    fun toggleBookmark() {
+      val ed = activeEditor ?: return
+      val line = ed.document.getLineNumber(ed.caretOffset) + 1
+      val added = Bookmarks.toggle(ed.file.path, line)
+      bookmarksTick++
+      NotificationService.info(
+        "Bookmark",
+        if (added) "Added ${ed.file.name}:$line" else "Removed ${ed.file.name}:$line"
+      )
+    }
+
+    fun goToNextBookmark() {
+      val ed = activeEditor
+      val line = if (ed != null) ed.document.getLineNumber(ed.caretOffset) + 1 else 0
+      val next = Bookmarks.next(ed?.file?.path, line) ?: run {
+        NotificationService.warn("Bookmarks", "None")
+        return
+      }
+      val vf = LocalFileSystem.getInstance().findFileByPath(next.filePath)
+      if (vf != null) openFile(vf, next.line)
+    }
+
     fun copyToClipboard(text: String, label: String) {
       try {
         Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
@@ -554,6 +580,7 @@ fun main() {
               commandPaletteVisible -> { commandPaletteVisible = false; true }
               searchEverywhereVisible -> { searchEverywhereVisible = false; true }
               recentFilesVisible -> { recentFilesVisible = false; true }
+              bookmarksVisible -> { bookmarksVisible = false; true }
               marketplaceVisible -> { marketplaceVisible = false; true }
               settingsVisible -> { settingsVisible = false; true }
               runConfigDialogVisible -> { runConfigDialogVisible = false; true }
@@ -603,6 +630,21 @@ fun main() {
           // Ctrl+0 — reset zoom
           ctrlOrMeta && event.key == Key.Zero && !shift -> {
             resetEditorZoom()
+            true
+          }
+          // F11 — toggle bookmark
+          event.key == Key.F11 && !shift && !ctrlOrMeta -> {
+            toggleBookmark()
+            true
+          }
+          // Shift+F11 — next bookmark
+          event.key == Key.F11 && shift && !ctrlOrMeta -> {
+            goToNextBookmark()
+            true
+          }
+          // Ctrl+F11 — bookmarks list
+          ctrlOrMeta && event.key == Key.F11 -> {
+            bookmarksVisible = true
             true
           }
           // Ctrl+Shift+S — Save All
@@ -717,6 +759,9 @@ fun main() {
           copyRelativePath = { copyActivePath("relative") },
           copyFileName = { copyActivePath("name") },
           revealInProject = { revealInProjectView() },
+          toggleBookmark = { toggleBookmark() },
+          nextBookmark = { goToNextBookmark() },
+          showBookmarks = { bookmarksVisible = true },
           reformat = {
             val ed = activeEditor
             if (ed != null) {
@@ -858,9 +903,33 @@ fun main() {
             PaletteAction("copy.path", "Copy Absolute Path", enabled = activeEditor != null) { copyActivePath("absolute") },
             PaletteAction("copy.relative", "Copy Relative Path", enabled = activeEditor != null) { copyActivePath("relative") },
             PaletteAction("copy.name", "Copy File Name", enabled = activeEditor != null) { copyActivePath("name") },
-            PaletteAction("reveal.project", "Reveal in Project View", enabled = activeEditor != null) { revealInProjectView() }
+            PaletteAction("reveal.project", "Reveal in Project View", enabled = activeEditor != null) { revealInProjectView() },
+            PaletteAction("bookmark.toggle", "Toggle Bookmark", "F11", activeEditor != null) { toggleBookmark() },
+            PaletteAction("bookmark.next", "Next Bookmark", "Shift+F11") { goToNextBookmark() },
+            PaletteAction("bookmark.list", "Show Bookmarks", "Ctrl+F11") { bookmarksVisible = true }
           ),
           onDismiss = { commandPaletteVisible = false }
+        )
+      }
+      if (bookmarksVisible) {
+        @Suppress("UNUSED_EXPRESSION")
+        bookmarksTick
+        BookmarksDialog(
+          bookmarks = Bookmarks.list(),
+          onNavigate = { bm ->
+            bookmarksVisible = false
+            val vf = LocalFileSystem.getInstance().findFileByPath(bm.filePath)
+            if (vf != null) openFile(vf, bm.line)
+          },
+          onRemove = { bm ->
+            Bookmarks.remove(bm.filePath, bm.line)
+            bookmarksTick++
+          },
+          onClear = {
+            Bookmarks.clear()
+            bookmarksTick++
+          },
+          onDismiss = { bookmarksVisible = false }
         )
       }
       if (searchEverywhereVisible) {
