@@ -654,6 +654,20 @@ fun main() {
               Logger.info("Use Ctrl+Shift+K in the editor to delete lines")
             }
           )
+          Item(
+            "Join Lines",
+            enabled = activeEditor != null,
+            onClick = {
+              Logger.info("Use Ctrl+Shift+J in the editor to join lines")
+            }
+          )
+          Item(
+            "Toggle Case / Upper / Lower",
+            enabled = activeEditor != null,
+            onClick = {
+              Logger.info("Use Ctrl+Shift+U (upper) / Ctrl+Shift+L (lower) in the editor")
+            }
+          )
         }
         Menu("Refactor", mnemonic = 'T') {
           Item(

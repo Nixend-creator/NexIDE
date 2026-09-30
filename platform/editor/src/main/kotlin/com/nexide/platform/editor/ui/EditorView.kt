@@ -65,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.nexide.platform.core.debug.BreakpointManager
 import com.nexide.platform.core.git.GitDiffGutter
+import com.nexide.platform.core.git.GitOperations
 import com.nexide.platform.core.git.LineDiffType
 import com.nexide.platform.core.settings.NexIdeSettings
 import com.nexide.platform.editor.Editor
@@ -420,6 +421,71 @@ fun EditorView(
     modifiedTick++
   }
 
+  /**
+   * Transforms selected text (or current word) to UPPER / lower / Toggle case.
+   * mode: "upper" | "lower" | "toggle"
+   */
+  fun transformCase(mode: String) {
+    val sel = textFieldValue.selection
+    var start = minOf(sel.start, sel.end)
+    var end = maxOf(sel.start, sel.end)
+    if (start == end) {
+      // expand to word
+      while (start > 0 && (text[start - 1].isLetterOrDigit() || text[start - 1] == '_')) start--
+      while (end < text.length && (text[end].isLetterOrDigit() || text[end] == '_')) end++
+      if (start == end) return
+    }
+    val original = text.substring(start, end)
+    val transformed = when (mode) {
+      "upper" -> original.uppercase()
+      "lower" -> original.lowercase()
+      else -> original.map { ch ->
+        when {
+          ch.isUpperCase() -> ch.lowercaseChar()
+          ch.isLowerCase() -> ch.uppercaseChar()
+          else -> ch
+        }
+      }.joinToString("")
+    }
+    if (transformed == original) return
+    val newText = text.substring(0, start) + transformed + text.substring(end)
+    editor.replaceText(newText)
+    editor.undoManager.recordChange()
+    textFieldValue = TextFieldValue(newText, TextRange(start, start + transformed.length))
+    statusMessage = "Case: $mode"
+    modifiedTick++
+  }
+
+  /**
+   * Joins selected lines (or current + next) into one line separated by a space.
+   */
+  fun joinLines() {
+    val sel = textFieldValue.selection
+    val start = minOf(sel.start, sel.end)
+    val end = maxOf(sel.start, sel.end)
+    val lineStart = text.lastIndexOf('\n', (start - 1).coerceAtLeast(0)).let {
+      if (it < 0) 0 else it + 1
+    }
+    val lineEnd = text.indexOf('\n', if (end > start) (end - 1).coerceAtLeast(0) else end).let {
+      if (it < 0) text.length else it
+    }
+    // If single line selection, include next line
+    var blockEnd = lineEnd
+    if (start == end || !text.substring(lineStart, lineEnd).contains('\n')) {
+      if (lineEnd >= text.length) return
+      blockEnd = text.indexOf('\n', lineEnd + 1).let { if (it < 0) text.length else it }
+    }
+    val block = text.substring(lineStart, blockEnd)
+    val joined = block.split('\n').joinToString(" ") { it.trim() }
+    val deleteEnd = if (blockEnd < text.length && text[blockEnd] == '\n') blockEnd else blockEnd
+    val newText = text.substring(0, lineStart) + joined + text.substring(deleteEnd)
+    editor.replaceText(newText)
+    editor.undoManager.recordChange()
+    textFieldValue = TextFieldValue(newText, TextRange(lineStart, lineStart + joined.length))
+    statusMessage = "Joined"
+    modifiedTick++
+  }
+
   val onTextChange: (TextFieldValue) -> Unit = { newValue ->
     if (newValue.text != textFieldValue.text) {
       editor.document.setText(newValue.text)
@@ -546,6 +612,21 @@ fun EditorView(
             deleteLines()
             true
           }
+          // Ctrl+Shift+U — Upper case
+          ctrlOrMeta && event.isShiftPressed && event.key == Key.U -> {
+            transformCase("upper")
+            true
+          }
+          // Ctrl+Shift+L — Lower case (when not format: format is Ctrl+Alt+L)
+          ctrlOrMeta && event.isShiftPressed && event.key == Key.L && !event.isAltPressed -> {
+            transformCase("lower")
+            true
+          }
+          // Ctrl+Shift+J — Join lines
+          ctrlOrMeta && event.isShiftPressed && event.key == Key.J -> {
+            joinLines()
+            true
+          }
           // Alt+Shift+Up — Move line up
           event.isAltPressed && event.isShiftPressed && event.key == Key.DirectionUp -> {
             moveLines(up = true)
@@ -616,6 +697,9 @@ fun EditorView(
 
       val caretOffset = textFieldValue.selection.start
       val (caretLine, caretCol) = lineColAtOffset(text, caretOffset)
+      val gitBranch = remember(projectRootPath) {
+        projectRootPath?.let { GitOperations.currentBranch(File(it)) }
+      }
       val status = buildString {
         append(editor.file.name)
         if (editor.isModified) append(" *")
@@ -627,6 +711,10 @@ fun EditorView(
         append("${editor.document.textLength} chars")
         append("  |  ")
         append("$lineCount lines")
+        gitBranch?.let {
+          append("  |  ")
+          append("git:$it")
+        }
         statusMessage?.let {
           append("  |  ")
           append(it)

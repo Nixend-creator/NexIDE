@@ -60,6 +60,9 @@ Current capabilities:
 - Close tab / other / all (Ctrl+W, Ctrl+Shift+W)
 - Soft wrap (View menu / Settings)
 - Delete line (Ctrl+Shift+K)
+- Status bar: git branch
+- Join lines (Ctrl+Shift+J)
+- Upper/Lower case (Ctrl+Shift+U / Ctrl+Shift+L)
 
 ## Tech Stack
 
