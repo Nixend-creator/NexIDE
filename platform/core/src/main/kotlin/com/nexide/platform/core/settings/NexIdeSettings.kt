@@ -84,4 +84,14 @@ object NexIdeSettings {
       ensureLoaded()
       props.setProperty("editor.tabSize", value.coerceIn(1, 8).toString())
     }
+
+  var softWrap: Boolean
+    get() {
+      ensureLoaded()
+      return props.getProperty("editor.softWrap", "false").toBoolean()
+    }
+    set(value) {
+      ensureLoaded()
+      props.setProperty("editor.softWrap", value.toString())
+    }
 }

@@ -50,6 +50,7 @@ fun SettingsDialog(
   var fontSize by remember { mutableStateOf(NexIdeSettings.editorFontSize) }
   var showLineNumbers by remember { mutableStateOf(NexIdeSettings.showLineNumbers) }
   var tabSize by remember { mutableStateOf(NexIdeSettings.tabSize) }
+  var softWrap by remember { mutableStateOf(NexIdeSettings.softWrap) }
 
   Dialog(onDismissRequest = onDismiss) {
     Column(
@@ -131,6 +132,22 @@ fun SettingsDialog(
         )
       }
 
+      // Soft wrap
+      Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Text(
+          text = "Soft wrap",
+          style = MaterialTheme.typography.bodyMedium,
+          modifier = Modifier.weight(1f)
+        )
+        Checkbox(
+          checked = softWrap,
+          onCheckedChange = { softWrap = it }
+        )
+      }
+
       Row(
         modifier = Modifier
           .fillMaxWidth()
@@ -146,6 +163,7 @@ fun SettingsDialog(
             NexIdeSettings.editorFontSize = fontSize
             NexIdeSettings.showLineNumbers = showLineNumbers
             NexIdeSettings.tabSize = tabSize
+            NexIdeSettings.softWrap = softWrap
             NexIdeSettings.save()
             onApplied()
             onDismiss()

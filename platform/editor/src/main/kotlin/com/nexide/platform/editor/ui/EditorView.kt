@@ -449,6 +449,7 @@ fun EditorView(
   val fontSizeSp = NexIdeSettings.editorFontSize.sp
   val lineHeightSp = (NexIdeSettings.editorFontSize * 1.4f).sp
   val showGutter = NexIdeSettings.showLineNumbers
+  val softWrap = NexIdeSettings.softWrap
 
   val textStyle = TextStyle(
     fontFamily = FontFamily.Monospace,
@@ -757,6 +758,7 @@ fun EditorView(
             .padding(start = 8.dp, end = 12.dp, top = 12.dp, bottom = 12.dp),
           textStyle = textStyle,
           cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+          softWrap = softWrap,
           decorationBox = { innerTextField ->
             Box {
               if (text.isEmpty()) {
@@ -767,7 +769,8 @@ fun EditorView(
               } else {
                 Text(
                   text = highlightedText,
-                  style = highlightStyle
+                  style = highlightStyle,
+                  softWrap = softWrap
                 )
               }
               innerTextField()

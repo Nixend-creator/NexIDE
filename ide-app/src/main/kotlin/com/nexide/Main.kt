@@ -719,6 +719,20 @@ fun main() {
           Item("Terminal", onClick = { terminalVisible = true })
           Item("Run Tool Window", onClick = { runPanelVisible = true })
           Item("Problems", onClick = { problemsVisible = true })
+          Separator()
+          Item(
+            if (com.nexide.platform.core.settings.NexIdeSettings.softWrap) {
+              "Soft Wrap ✓"
+            } else {
+              "Soft Wrap"
+            },
+            onClick = {
+              com.nexide.platform.core.settings.NexIdeSettings.softWrap =
+                !com.nexide.platform.core.settings.NexIdeSettings.softWrap
+              com.nexide.platform.core.settings.NexIdeSettings.save()
+              settingsRevision++
+            }
+          )
         }
       }
 

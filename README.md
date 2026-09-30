@@ -58,6 +58,7 @@ Current capabilities:
 - Duplicate line (Ctrl+D)
 - Move line up/down (Alt+Shift+↑/↓)
 - Close tab / other / all (Ctrl+W, Ctrl+Shift+W)
+- Soft wrap (View menu / Settings)
 
 ## Tech Stack
 
