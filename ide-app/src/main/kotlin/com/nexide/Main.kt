@@ -583,142 +583,49 @@ fun main() {
         }
       }
     ) {
-      MenuBar {
-        Menu("File", mnemonic = 'F') {
-          Item("Open Project…", onClick = { chooseAndOpenProject() }, shortcut = null)
-          val recent = RecentProjects.list()
-            .filter { it != project.basePath }
-          if (recent.isNotEmpty()) {
-            Menu("Open Recent", mnemonic = 'R') {
-              recent.forEach { path ->
-                Item(
-                  RecentProjects.displayName(path),
-                  onClick = { openProjectFromPath(path) }
-                )
-              }
-              Separator()
-              Item("Clear List", onClick = {
-                RecentProjects.list().forEach { RecentProjects.remove(it) }
-              })
-            }
-          }
-          Item(
-            "Save",
-            enabled = activeEditor != null,
-            onClick = { saveActive() }
-          )
-          Item(
-            "Save All",
-            enabled = openEditors.any { it.isModified },
-            onClick = { saveAll() }
-          )
-          Separator()
-          Item(
-            "Close Tab",
-            enabled = activeEditor != null,
-            onClick = { activeEditor?.let { requestCloseEditor(it) } }
-          )
-          Item(
-            "Close Other Tabs",
-            enabled = openEditors.size > 1 && activeEditor != null,
-            onClick = { closeOtherTabs() }
-          )
-          Item(
-            "Close All Tabs",
-            enabled = openEditors.isNotEmpty(),
-            onClick = { closeAllEditors() }
-          )
-          Separator()
-          Item("Settings…", onClick = { settingsVisible = true })
-          Separator()
-          Item("Exit", onClick = {
+      IdeMenuBar(
+        hasEditor = activeEditor != null,
+        hasModified = openEditors.any { it.isModified },
+        tabCount = openEditors.size,
+        selectedRunName = runConfigManager.selected?.name,
+        softWrap = com.nexide.platform.core.settings.NexIdeSettings.softWrap,
+        darkTheme = darkTheme,
+        splitEditor = splitEditor,
+        currentProjectPath = project.basePath,
+        actions = IdeMenuActions(
+          openProject = { chooseAndOpenProject() },
+          openRecent = { openProjectFromPath(it) },
+          clearRecent = {
+            RecentProjects.list().forEach { RecentProjects.remove(it) }
+          },
+          save = { saveActive() },
+          saveAll = { saveAll() },
+          closeTab = { activeEditor?.let { requestCloseEditor(it) } },
+          closeOtherTabs = { closeOtherTabs() },
+          closeAllTabs = { closeAllEditors() },
+          openSettings = { settingsVisible = true },
+          exit = {
+            persistSession()
             application.exit()
             exitApplication()
-          })
-        }
-        Menu("Navigate", mnemonic = 'N') {
-          Item(
-            "Go to Declaration",
-            enabled = activeEditor != null,
-            onClick = { gotoDeclaration() }
-          )
-          Item(
-            "Find Usages",
-            enabled = activeEditor != null,
-            onClick = { findUsages() }
-          )
-        }
-        Menu("Code", mnemonic = 'C') {
-          Item(
-            "Reformat Code",
-            enabled = activeEditor != null,
-            onClick = {
-              val ed = activeEditor ?: return@Item
+          },
+          gotoDeclaration = { gotoDeclaration() },
+          findUsages = { findUsages() },
+          reformat = {
+            val ed = activeEditor
+            if (ed != null) {
               val indent = com.nexide.platform.core.settings.NexIdeSettings.tabSize
               val formatted = com.nexide.platform.editor.format.CodeFormatter.format(
-                ed.document.getText(),
-                indent
+                ed.document.getText(), indent
               )
               if (formatted != ed.document.getText()) {
                 ed.replaceText(formatted)
-                Logger.info("Formatted: ${ed.file.name}")
               }
             }
-          )
-          Item(
-            "Comment with Line Comment",
-            enabled = activeEditor != null,
-            onClick = {
-              Logger.info("Use Ctrl+/ in the editor to toggle line comments")
-            }
-          )
-          Item(
-            "Duplicate Line",
-            enabled = activeEditor != null,
-            onClick = {
-              Logger.info("Use Ctrl+D in the editor to duplicate lines")
-            }
-          )
-          Item(
-            "Move Line Up",
-            enabled = activeEditor != null,
-            onClick = {
-              Logger.info("Use Alt+Shift+Up in the editor to move lines")
-            }
-          )
-          Item(
-            "Move Line Down",
-            enabled = activeEditor != null,
-            onClick = {
-              Logger.info("Use Alt+Shift+Down in the editor to move lines")
-            }
-          )
-          Item(
-            "Delete Line",
-            enabled = activeEditor != null,
-            onClick = {
-              Logger.info("Use Ctrl+Shift+K in the editor to delete lines")
-            }
-          )
-          Item(
-            "Join Lines",
-            enabled = activeEditor != null,
-            onClick = {
-              Logger.info("Use Ctrl+Shift+J in the editor to join lines")
-            }
-          )
-          Item(
-            "Toggle Case / Upper / Lower",
-            enabled = activeEditor != null,
-            onClick = {
-              Logger.info("Use Ctrl+Shift+U (upper) / Ctrl+Shift+L (lower) in the editor")
-            }
-          )
-          Item(
-            "Restore Last Local History",
-            enabled = activeEditor != null,
-            onClick = {
-              val ed = activeEditor ?: return@Item
+          },
+          restoreLocalHistory = {
+            val ed = activeEditor
+            if (ed != null) {
               val content = com.nexide.platform.core.history.LocalHistory.contentAt(ed.file.path, 0)
               if (content != null) {
                 ed.replaceText(content)
@@ -727,112 +634,48 @@ fun main() {
                 NotificationService.warn("Local History", "No snapshots for this file")
               }
             }
-          )
-        }
-        Menu("Refactor", mnemonic = 'T') {
-          Item(
-            "Rename…",
-            enabled = activeEditor != null,
-            onClick = { startRename() }
-          )
-        }
-        Menu("Build", mnemonic = 'B') {
-          Item("Build Project", onClick = { buildProject() })
-          Item("Show Problems", onClick = { problemsVisible = true })
-        }
-        Menu("Run", mnemonic = 'R') {
-          Item(
-            "Run '${runConfigManager.selected?.name ?: "…"}'",
-            enabled = runConfigManager.selected != null,
-            onClick = {
-              runConfigManager.selected?.let { runConfiguration(it, debug = false) }
-            }
-          )
-          Item(
-            "Debug '${runConfigManager.selected?.name ?: "…"}'",
-            enabled = runConfigManager.selected != null,
-            onClick = {
-              runConfigManager.selected?.let { runConfiguration(it, debug = true) }
-            }
-          )
-          Item("Edit Configurations…", onClick = { runConfigDialogVisible = true })
-          Separator()
-          Item("Gradle: build", onClick = { runGradle("build") })
-          Item("Gradle: test", onClick = { runGradle("test") })
-          Item("Gradle: tasks", onClick = { runGradle("tasks") })
-          Separator()
-          Item(
-            "Toggle Breakpoint",
-            enabled = activeEditor != null,
-            onClick = {
-              val ed = activeEditor ?: return@Item
-              BreakpointManager.getInstance().toggle(ed.file.path, 1)
-              breakpointsVisible = true
-            }
-          )
-          Item(
-            "View Breakpoints",
-            onClick = { breakpointsVisible = true }
-          )
-          Item(
-            "Show Debug Tool Window",
-            onClick = { debugPanelVisible = true }
-          )
-          Separator()
-          Item(
-            "Stop",
-            enabled = processRunner.isRunning || debugSessionManager.isActive,
-            onClick = {
-              if (debugSessionManager.isActive) debugSessionManager.stop()
-              else processRunner.stop()
-            }
-          )
-          Item(
-            "Show Run Tool Window",
-            onClick = { runPanelVisible = true }
-          )
-        }
-        Menu("View", mnemonic = 'V') {
-          Item("Find in Files", onClick = { findInFilesVisible = true })
-          Item("Structure", onClick = { structureVisible = true })
-          Item("Breakpoints", onClick = { breakpointsVisible = true })
-          Item("Git", onClick = { gitPanelVisible = true })
-          Item("Terminal", onClick = { terminalVisible = true })
-          Item("Run Tool Window", onClick = { runPanelVisible = true })
-          Item("Problems", onClick = { problemsVisible = true })
-          Separator()
-          Item(
-            if (com.nexide.platform.core.settings.NexIdeSettings.softWrap) {
-              "Soft Wrap ✓"
-            } else {
-              "Soft Wrap"
-            },
-            onClick = {
-              com.nexide.platform.core.settings.NexIdeSettings.softWrap =
-                !com.nexide.platform.core.settings.NexIdeSettings.softWrap
-              com.nexide.platform.core.settings.NexIdeSettings.save()
-              settingsRevision++
-            }
-          )
-          Item(
-            if (darkTheme) "Dark Theme ✓" else "Dark Theme",
-            onClick = {
-              darkTheme = !darkTheme
-              IdeStateStore.darkTheme = darkTheme
-              IdeStateStore.save()
-            }
-          )
-          Item(
-            if (splitEditor) "Split Editor ✓" else "Split Editor",
-            onClick = {
-              splitEditor = !splitEditor
-              IdeStateStore.splitEditor = splitEditor
-              IdeStateStore.save()
-            }
-          )
-          Item("Plugins…", onClick = { marketplaceVisible = true })
-        }
-      }
+          },
+          rename = { startRename() },
+          build = { buildProject() },
+          showProblems = { problemsVisible = true },
+          runSelected = {
+            runConfigManager.selected?.let { runConfiguration(it, debug = false) }
+          },
+          debugSelected = {
+            runConfigManager.selected?.let { runConfiguration(it, debug = true) }
+          },
+          editRunConfigs = { runConfigDialogVisible = true },
+          stop = {
+            processRunner.stop()
+            debugSessionManager.stop()
+            jdiConnector.detach()
+          },
+          showBreakpoints = { breakpointsVisible = true },
+          showDebug = { debugPanelVisible = true },
+          findInFiles = { findInFilesVisible = true },
+          showStructure = { structureVisible = true },
+          showGit = { gitPanelVisible = true },
+          showTerminal = { terminalVisible = true },
+          showRun = { runPanelVisible = true },
+          toggleSoftWrap = {
+            com.nexide.platform.core.settings.NexIdeSettings.softWrap =
+              !com.nexide.platform.core.settings.NexIdeSettings.softWrap
+            com.nexide.platform.core.settings.NexIdeSettings.save()
+            settingsRevision++
+          },
+          toggleDarkTheme = {
+            darkTheme = !darkTheme
+            IdeStateStore.darkTheme = darkTheme
+            IdeStateStore.save()
+          },
+          toggleSplit = {
+            splitEditor = !splitEditor
+            IdeStateStore.splitEditor = splitEditor
+            IdeStateStore.save()
+          },
+          openPlugins = { marketplaceVisible = true }
+        )
+      )
 
       if (marketplaceVisible) {
         MarketplaceDialog(onDismiss = { marketplaceVisible = false })
