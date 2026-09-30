@@ -57,6 +57,7 @@ Current capabilities:
 - Comment / uncomment lines (Ctrl+/)
 - Duplicate line (Ctrl+D)
 - Move line up/down (Alt+Shift+↑/↓)
+- Close tab / other / all (Ctrl+W, Ctrl+Shift+W)
 
 ## Tech Stack
 
