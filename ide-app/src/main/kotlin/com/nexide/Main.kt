@@ -68,7 +68,6 @@ import com.nexide.platform.core.run.RunConfigurationManager
 import com.nexide.platform.core.vfs.LocalFileSystem
 import com.nexide.platform.core.vfs.VirtualFile
 import com.nexide.platform.editor.Editor
-import com.nexide.platform.editor.ui.EditorView
 import com.nexide.platform.plugin.PluginManager
 import com.nexide.platform.plugin.example.CoreFileTypesPlugin
 import com.nexide.platform.plugin.example.FILE_TYPE_EP
@@ -81,7 +80,6 @@ import com.nexide.platform.ui.refactor.RenameDialog
 import com.nexide.platform.ui.run.RunConfigDialog
 import com.nexide.platform.ui.search.SearchHit
 import com.nexide.platform.ui.structure.StructureToolWindow
-import com.nexide.platform.ui.tabs.EditorTabs
 import com.nexide.platform.core.debug.BreakpointManager
 import com.nexide.platform.core.debug.DebugSessionManager
 import com.nexide.platform.core.debug.JdiConnector
@@ -89,7 +87,6 @@ import com.nexide.platform.core.debug.JdiListener
 import com.nexide.platform.core.debug.SuspendedThreadInfo
 import javax.swing.SwingUtilities
 import com.nexide.platform.ui.settings.SettingsDialog
-import com.nexide.platform.ui.welcome.WelcomeScreen
 import com.nexide.platform.ui.notify.NotificationHost
 import com.nexide.platform.ui.plugins.MarketplaceDialog
 import com.nexide.platform.util.Logger
@@ -856,57 +853,21 @@ fun NexIdeApp(
 
           VerticalDivider()
 
-          Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-            EditorTabs(
-              editors = openEditors,
-              activeEditor = activeEditor,
-              onSelect = onSelectEditor,
-              onClose = onRequestClose
-            )
-
-            val editor = activeEditor
-            if (editor != null && splitEditor && openEditors.size > 1) {
-              val secondary = openEditors.firstOrNull { it !== editor } ?: editor
-              Row(Modifier.weight(1f).fillMaxSize()) {
-                EditorView(
-                  editor = editor,
-                  modifier = Modifier.weight(1f).fillMaxSize(),
-                  projectRootPath = project.basePath,
-                  settingsRevision = settingsRevision,
-                  problemLines = problems.filter { it.filePath == editor.file.path }.mapNotNull { it.line }.toSet()
-                )
-                VerticalDivider()
-                EditorView(
-                  editor = secondary,
-                  modifier = Modifier.weight(1f).fillMaxSize(),
-                  projectRootPath = project.basePath,
-                  settingsRevision = settingsRevision,
-                  problemLines = problems.filter { it.filePath == secondary.file.path }.mapNotNull { it.line }.toSet()
-                )
-              }
-            } else if (editor != null) {
-              val gotoLine = pendingGoToLine?.takeIf { it.first === editor }?.second
-              EditorView(
-                editor = editor,
-                modifier = Modifier.weight(1f).fillMaxSize(),
-                gotoLineRequest = gotoLine,
-                onGotoLineHandled = onPendingGoToLineHandled,
-                projectRootPath = project.basePath,
-                settingsRevision = settingsRevision,
-                problemLines = problems
-                  .filter { it.filePath == editor.file.path && it.line != null }
-                  .mapNotNull { it.line }
-                  .toSet()
-              )
-            } else {
-              WelcomeScreen(
-                currentProjectPath = project.basePath,
-                onOpenProject = onOpenProject,
-                onOpenRecent = onOpenRecent,
-                modifier = Modifier.weight(1f).fillMaxSize()
-              )
-            }
-          }
+          IdeEditorArea(
+            openEditors = openEditors,
+            activeEditor = activeEditor,
+            splitEditor = splitEditor,
+            projectPath = project.basePath,
+            settingsRevision = settingsRevision,
+            problems = problems,
+            pendingGoToLine = pendingGoToLine,
+            onPendingGoToLineHandled = onPendingGoToLineHandled,
+            onSelectEditor = onSelectEditor,
+            onRequestClose = onRequestClose,
+            onOpenProject = onOpenProject,
+            onOpenRecent = onOpenRecent,
+            modifier = Modifier.weight(1f)
+          )
 
           if (structureVisible) {
             VerticalDivider()
