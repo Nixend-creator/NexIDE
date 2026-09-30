@@ -55,6 +55,7 @@ Current capabilities:
 - Code formatter (Ctrl+Alt+L, brace-based indent)
 - Git diff gutter (green = added, blue = modified)
 - Comment / uncomment lines (Ctrl+/)
+- Duplicate line (Ctrl+D)
 
 ## Tech Stack
 

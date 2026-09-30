@@ -421,6 +421,11 @@ fun EditorView(
             toggleComment()
             true
           }
+          // Ctrl+D — Duplicate line / selection
+          ctrlOrMeta && event.key == Key.D && !event.isShiftPressed -> {
+            duplicateLines()
+            true
+          }
           event.key == Key.Escape && completionVisible -> {
             completionVisible = false
             true

@@ -575,6 +575,13 @@ fun main() {
               Logger.info("Use Ctrl+/ in the editor to toggle line comments")
             }
           )
+          Item(
+            "Duplicate Line",
+            enabled = activeEditor != null,
+            onClick = {
+              Logger.info("Use Ctrl+D in the editor to duplicate lines")
+            }
+          )
         }
         Menu("Refactor", mnemonic = 'T') {
           Item(
