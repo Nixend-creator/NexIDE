@@ -548,7 +548,29 @@ fun main() {
         val ctrlOrMeta = event.isCtrlPressed || event.isMetaPressed
         val shift = event.isShiftPressed
         when {
-          // Ctrl+Shift+O — Open Project (also Ctrl+O)
+          // Escape — close topmost dialog / tool window
+          event.key == Key.Escape -> {
+            when {
+              commandPaletteVisible -> { commandPaletteVisible = false; true }
+              searchEverywhereVisible -> { searchEverywhereVisible = false; true }
+              recentFilesVisible -> { recentFilesVisible = false; true }
+              marketplaceVisible -> { marketplaceVisible = false; true }
+              settingsVisible -> { settingsVisible = false; true }
+              runConfigDialogVisible -> { runConfigDialogVisible = false; true }
+              gotoTargets != null -> { gotoTargets = null; true }
+              renameSymbol != null -> { renameSymbol = null; true }
+              findInFilesVisible -> { findInFilesVisible = false; true }
+              problemsVisible -> { problemsVisible = false; true }
+              breakpointsVisible -> { breakpointsVisible = false; true }
+              debugPanelVisible -> { debugPanelVisible = false; true }
+              runPanelVisible -> { runPanelVisible = false; true }
+              gitPanelVisible -> { gitPanelVisible = false; true }
+              terminalVisible -> { terminalVisible = false; true }
+              structureVisible -> { structureVisible = false; true }
+              else -> false
+            }
+          }
+          // Ctrl+O — Open Project
           ctrlOrMeta && event.key == Key.O -> {
             chooseAndOpenProject()
             true
