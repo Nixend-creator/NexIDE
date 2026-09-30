@@ -268,6 +268,19 @@ fun DebugToolWindow(
         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
       )
     }
+    // Watches (evaluated when suspended)
+    if (attached) {
+      val watchResults = remember(suspended, attached) {
+        jdiConnector.evaluateWatches()
+      }
+      if (watchResults.isNotEmpty()) {
+        Text(
+          text = "Watches: " + watchResults.joinToString(" · ") { "${it.first}=${it.second}" },
+          style = MaterialTheme.typography.labelSmall,
+          modifier = Modifier.padding(horizontal = 8.dp)
+        )
+      }
+    }
 
     Row(
       modifier = Modifier

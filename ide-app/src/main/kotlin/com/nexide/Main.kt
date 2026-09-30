@@ -25,6 +25,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
@@ -49,6 +51,10 @@ import androidx.compose.ui.window.Window
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import com.nexide.platform.core.Application
+import com.nexide.platform.core.state.IdeStateStore
+import com.nexide.platform.core.index.SymbolIndex
+import com.nexide.platform.core.notify.NotificationService
+import com.nexide.platform.core.history.LocalHistory
 import com.nexide.platform.core.Project
 import com.nexide.platform.core.RecentProjects
 import com.nexide.platform.core.build.Problem
@@ -92,6 +98,8 @@ import com.nexide.platform.ui.debug.BreakpointsToolWindow
 import com.nexide.platform.ui.debug.DebugToolWindow
 import com.nexide.platform.ui.settings.SettingsDialog
 import com.nexide.platform.ui.welcome.WelcomeScreen
+import com.nexide.platform.ui.notify.NotificationHost
+import com.nexide.platform.ui.plugins.MarketplaceDialog
 import com.nexide.platform.util.Logger
 import java.io.File
 import javax.swing.JFileChooser
@@ -123,6 +131,10 @@ fun main() {
 
     var project by mutableStateOf(application.openProject(defaultPath))
     val openEditors = mutableStateListOf<Editor>()
+    var darkTheme by mutableStateOf(IdeStateStore.darkTheme)
+    var splitEditor by mutableStateOf(IdeStateStore.splitEditor)
+    var marketplaceVisible by mutableStateOf(false)
+
     var activeEditor by mutableStateOf<Editor?>(null)
     var selectedFile by mutableStateOf<VirtualFile?>(null)
     var pendingCloseEditor by mutableStateOf<Editor?>(null)
@@ -151,6 +163,21 @@ fun main() {
     val runConfigManager = remember { RunConfigurationManager.getInstance() }
     // Seed defaults for current project
     runConfigManager.ensureDefaults(File(project.basePath))
+    // Restore tabs from last session
+    if (openEditors.isEmpty()) {
+      IdeStateStore.openTabs.forEach { path ->
+        try {
+          val vf = LocalFileSystem.getInstance().findFileByPath(path)
+          if (vf != null && !vf.isDirectory) {
+            openEditors.add(Editor.create(vf))
+          }
+        } catch (_: Exception) {}
+      }
+      val activePath = IdeStateStore.activeTabPath
+      activeEditor = openEditors.firstOrNull { it.file.path == activePath } ?: openEditors.firstOrNull()
+      selectedFile = activeEditor?.file
+    }
+
 
     fun buildProject() {
       val dir = File(project.basePath)
@@ -183,6 +210,8 @@ fun main() {
           }
           building = false
           Logger.info("Build finished ($exitCode): ${problems.size} problem(s)")
+          if (problems.isEmpty()) NotificationService.success("Build OK")
+          else NotificationService.warn("Build", "${problems.size} problem(s)")
         }
       }
       processRunner.addListener(listener)
@@ -324,11 +353,18 @@ fun main() {
       RecentProjects.add(path)
       runConfigManager.clear()
       runConfigManager.ensureDefaults(File(path))
+      SymbolIndex.invalidate()
+      try { SymbolIndex.ensureIndexed(File(path)) } catch (_: Exception) {}
+      IdeStateStore.lastProjectPath = path
+      IdeStateStore.save()
+      NotificationService.info("Project opened", path)
       Logger.info("Opened project: $path")
     }
 
     // Record the default project as recent on startup
     RecentProjects.add(project.basePath)
+    try { SymbolIndex.ensureIndexed(File(project.basePath)) } catch (_: Exception) {}
+
 
     // Jump editor to source when JDI hits a breakpoint / step
     val jumpListener = remember {
@@ -362,6 +398,15 @@ fun main() {
 
     fun saveActive() {
       activeEditor?.save()
+    }
+
+    fun persistSession() {
+      IdeStateStore.lastProjectPath = project.basePath
+      IdeStateStore.openTabs = openEditors.map { it.file.path }
+      IdeStateStore.activeTabPath = activeEditor?.file?.path
+      IdeStateStore.darkTheme = darkTheme
+      IdeStateStore.splitEditor = splitEditor
+      IdeStateStore.save()
     }
 
     fun saveAll() {
@@ -445,6 +490,7 @@ fun main() {
 
     Window(
       onCloseRequest = {
+        persistSession()
         application.exit()
         exitApplication()
       },
@@ -668,6 +714,20 @@ fun main() {
               Logger.info("Use Ctrl+Shift+U (upper) / Ctrl+Shift+L (lower) in the editor")
             }
           )
+          Item(
+            "Restore Last Local History",
+            enabled = activeEditor != null,
+            onClick = {
+              val ed = activeEditor ?: return@Item
+              val content = com.nexide.platform.core.history.LocalHistory.contentAt(ed.file.path, 0)
+              if (content != null) {
+                ed.replaceText(content)
+                NotificationService.info("Local History", "Restored last snapshot")
+              } else {
+                NotificationService.warn("Local History", "No snapshots for this file")
+              }
+            }
+          )
         }
         Menu("Refactor", mnemonic = 'T') {
           Item(
@@ -754,9 +814,29 @@ fun main() {
               settingsRevision++
             }
           )
+          Item(
+            if (darkTheme) "Dark Theme ✓" else "Dark Theme",
+            onClick = {
+              darkTheme = !darkTheme
+              IdeStateStore.darkTheme = darkTheme
+              IdeStateStore.save()
+            }
+          )
+          Item(
+            if (splitEditor) "Split Editor ✓" else "Split Editor",
+            onClick = {
+              splitEditor = !splitEditor
+              IdeStateStore.splitEditor = splitEditor
+              IdeStateStore.save()
+            }
+          )
+          Item("Plugins…", onClick = { marketplaceVisible = true })
         }
       }
 
+      if (marketplaceVisible) {
+        MarketplaceDialog(onDismiss = { marketplaceVisible = false })
+      }
       if (settingsVisible) {
         SettingsDialog(
           onDismiss = { settingsVisible = false },
@@ -904,6 +984,8 @@ fun main() {
           activeEditor = it
           selectedFile = it.file
         },
+        darkTheme = darkTheme,
+        splitEditor = splitEditor,
         onRequestClose = { editor -> requestCloseEditor(editor) },
         onCloseConfirm = { editor, result ->
           when (result) {
@@ -967,9 +1049,13 @@ fun NexIdeApp(
   onOpenRecent: (String) -> Unit,
   onSelectEditor: (Editor) -> Unit,
   onRequestClose: (Editor) -> Unit,
-  onCloseConfirm: (Editor, CloseConfirmResult) -> Unit
+  onCloseConfirm: (Editor, CloseConfirmResult) -> Unit,
+  darkTheme: Boolean = true,
+  splitEditor: Boolean = false
 ) {
-  MaterialTheme {
+  val colors = if (darkTheme) darkColorScheme() else lightColorScheme()
+  MaterialTheme(colorScheme = colors) {
+    Box(Modifier.fillMaxSize()) {
     if (pendingCloseEditor != null) {
       ConfirmCloseDialog(fileName = pendingCloseEditor.file.name) { result ->
         onCloseConfirm(pendingCloseEditor, result)
@@ -999,7 +1085,26 @@ fun NexIdeApp(
             )
 
             val editor = activeEditor
-            if (editor != null) {
+            if (editor != null && splitEditor && openEditors.size > 1) {
+              val secondary = openEditors.firstOrNull { it !== editor } ?: editor
+              Row(Modifier.weight(1f).fillMaxSize()) {
+                EditorView(
+                  editor = editor,
+                  modifier = Modifier.weight(1f).fillMaxSize(),
+                  projectRootPath = project.basePath,
+                  settingsRevision = settingsRevision,
+                  problemLines = problems.filter { it.filePath == editor.file.path }.mapNotNull { it.line }.toSet()
+                )
+                VerticalDivider()
+                EditorView(
+                  editor = secondary,
+                  modifier = Modifier.weight(1f).fillMaxSize(),
+                  projectRootPath = project.basePath,
+                  settingsRevision = settingsRevision,
+                  problemLines = problems.filter { it.filePath == secondary.file.path }.mapNotNull { it.line }.toSet()
+                )
+              }
+            } else if (editor != null) {
               val gotoLine = pendingGoToLine?.takeIf { it.first === editor }?.second
               EditorView(
                 editor = editor,
@@ -1007,7 +1112,11 @@ fun NexIdeApp(
                 gotoLineRequest = gotoLine,
                 onGotoLineHandled = onPendingGoToLineHandled,
                 projectRootPath = project.basePath,
-                settingsRevision = settingsRevision
+                settingsRevision = settingsRevision,
+                problemLines = problems
+                  .filter { it.filePath == editor.file.path && it.line != null }
+                  .mapNotNull { it.line }
+                  .toSet()
               )
             } else {
               WelcomeScreen(
@@ -1106,6 +1215,11 @@ fun NexIdeApp(
           )
         }
       }
+    }
+    // Toasts
+    Box(Modifier.fillMaxSize()) {
+      NotificationHost(modifier = Modifier.align(androidx.compose.ui.Alignment.BottomEnd))
+    }
     }
   }
 }

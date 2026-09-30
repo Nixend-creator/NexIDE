@@ -64,6 +64,18 @@ Current capabilities:
 - Join lines (Ctrl+Shift+J)
 - Upper/Lower case (Ctrl+Shift+U / Ctrl+Shift+L)
 
+
+### Recent (steps 1–13 roadmap MVP)
+- Project symbol index for completion / resolve
+- Inline error markers in gutter from Problems
+- Session restore (tabs, theme, split)
+- Notifications toast host
+- Local history on save + restore
+- Split editor, dark/light theme
+- Plugin marketplace stub (~/.nexide/plugins)
+- Debugger watches evaluation
+- ide-web/ scaffold for future web target
+
 ## Tech Stack
 
 - **Language:** Kotlin 2.4.20

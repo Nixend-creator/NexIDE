@@ -16,6 +16,8 @@
 
 package com.nexide.platform.editor.completion
 
+import com.nexide.platform.core.index.SymbolIndex
+
 /**
  * A single completion suggestion.
  */
@@ -70,7 +72,7 @@ object CompletionContributor {
     return text.substring(start, safe)
   }
 
-  fun complete(text: String, offset: Int, language: String): List<LookupElement> {
+  fun complete(text: String, offset: Int, language: String, projectRoot: String? = null): List<LookupElement> {
     val prefix = prefixAt(text, offset)
     val prefixLower = prefix.lowercase()
     val result = mutableListOf<LookupElement>()
@@ -84,6 +86,18 @@ object CompletionContributor {
     for (kw in keywords) {
       if (prefix.isEmpty() || kw.startsWith(prefixLower) || kw.startsWith(prefix)) {
         result.add(LookupElement(kw, "keyword", priority = 10))
+      }
+    }
+
+
+    // Project symbol index
+    if (projectRoot != null) {
+      try {
+        SymbolIndex.ensureIndexed(java.io.File(projectRoot))
+        for (sym in SymbolIndex.lookup(prefix, 30)) {
+          result.add(LookupElement(sym.name, "${sym.kind} · ${java.io.File(sym.filePath).name}", priority = 8))
+        }
+      } catch (_: Exception) {
       }
     }
 

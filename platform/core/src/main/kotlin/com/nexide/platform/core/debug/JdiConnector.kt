@@ -267,6 +267,58 @@ class JdiConnector {
     }
   }
 
+
+  /**
+   * Evaluates a simple expression in the suspended frame: variable name or this.field.
+   */
+  fun evaluateExpression(expression: String): String {
+    val thread = mySuspendedThread.get() ?: return "Not suspended"
+    val expr = expression.trim()
+    if (expr.isEmpty()) return ""
+    return try {
+      val frame = thread.frame(0)
+      // local variable
+      try {
+        val vars = frame.visibleVariables()
+        val v = vars.find { it.name() == expr }
+        if (v != null) {
+          return formatValue(frame.getValue(v))
+        }
+      } catch (_: Exception) {
+      }
+      // this.field
+      val thisObj = frame.thisObject()
+      if (thisObj != null) {
+        val fieldName = expr.removePrefix("this.")
+        val field = thisObj.referenceType().fieldByName(fieldName)
+        if (field != null) {
+          return formatValue(thisObj.getValue(field))
+        }
+      }
+      "Unknown: $expr"
+    } catch (e: Exception) {
+      "Error: ${e.message}"
+    }
+  }
+
+  private val myWatches = mutableListOf<String>()
+
+  fun watches(): List<String> = myWatches.toList()
+
+  fun addWatch(expression: String) {
+    val e = expression.trim()
+    if (e.isNotEmpty() && e !in myWatches) myWatches.add(e)
+  }
+
+  fun removeWatch(expression: String) {
+    myWatches.remove(expression)
+  }
+
+  fun evaluateWatches(): List<Pair<String, String>> {
+    if (!isSuspended) return myWatches.map { it to "—" }
+    return myWatches.map { it to evaluateExpression(it) }
+  }
+
   fun detach() {
     myListening.set(false)
     myEventThread.get()?.interrupt()

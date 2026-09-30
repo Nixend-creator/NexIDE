@@ -94,7 +94,9 @@ fun EditorView(
   onGotoLineHandled: () -> Unit = {},
   projectRootPath: String? = null,
   /** Bump to re-read settings (font size, line numbers). */
-  settingsRevision: Int = 0
+  settingsRevision: Int = 0,
+  /** 1-based lines with build errors */
+  problemLines: Set<Int> = emptySet()
 ) {
   var textFieldValue by remember(editor) {
     mutableStateOf(TextFieldValue(editor.document.getText()))
@@ -227,7 +229,7 @@ fun EditorView(
     val offset = textFieldValue.selection.start
     val lang = FileTypeRegistry.getLanguageByFileName(editor.file.name)
     completionPrefix = CompletionContributor.prefixAt(text, offset)
-    completionItems = CompletionContributor.complete(text, offset, lang)
+    completionItems = CompletionContributor.complete(text, offset, lang, projectRootPath)
     completionSelected = 0
     completionVisible = completionItems.isNotEmpty()
     if (completionVisible) {
@@ -846,10 +848,19 @@ fun EditorView(
                   .heightIn(min = 14.dp)
                   .background(diffColor)
               )
+              val hasError = line in problemLines
               Text(
-                text = if (hasBp) "●" else " ",
+                text = when {
+                  hasBp -> "●"
+                  hasError -> "!"
+                  else -> " "
+                },
                 style = gutterStyle.copy(
-                  color = if (hasBp) Color(0xFFE53935) else Color.Transparent,
+                  color = when {
+                    hasBp -> Color(0xFFE53935)
+                    hasError -> Color(0xFFFF5252)
+                    else -> Color.Transparent
+                  },
                   textAlign = TextAlign.Center
                 ),
                 modifier = Modifier.width(12.dp)

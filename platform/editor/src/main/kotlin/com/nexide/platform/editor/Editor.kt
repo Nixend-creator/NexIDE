@@ -16,6 +16,8 @@
 
 package com.nexide.platform.editor
 
+import com.nexide.platform.core.history.LocalHistory
+
 import com.nexide.platform.core.vfs.VirtualFile
 import com.nexide.platform.util.Logger
 
@@ -77,8 +79,10 @@ class Editor(
   fun save(): Boolean {
     if (myDisposed) return false
     return try {
-      file.setBinaryContent(document.getText())
+      val content = document.getText()
+      file.setBinaryContent(content)
       myModified = false
+      LocalHistory.record(file.path, content, "save")
       Logger.info("Saved: ${file.path}")
       true
     } catch (e: Exception) {
