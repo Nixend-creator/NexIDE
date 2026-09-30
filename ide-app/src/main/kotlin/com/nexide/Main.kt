@@ -287,8 +287,33 @@ fun main() {
       }
     }
 
+    fun requestCloseEditor(editor: Editor) {
+      if (editor.isModified) {
+        pendingCloseEditor = editor
+      } else {
+        doCloseEditor(editor)
+      }
+    }
+
+    fun closeOtherTabs() {
+      val keep = activeEditor ?: return
+      openEditors.toList().filter { it !== keep }.forEach { ed ->
+        if (ed.isModified) {
+          ed.save()
+          Logger.info("Saved before close: ${ed.file.name}")
+        }
+        doCloseEditor(ed)
+      }
+    }
+
     fun closeAllEditors() {
-      openEditors.toList().forEach { doCloseEditor(it) }
+      openEditors.toList().forEach { ed ->
+        if (ed.isModified) {
+          ed.save()
+          Logger.info("Saved before close: ${ed.file.name}")
+        }
+        doCloseEditor(ed)
+      }
     }
 
     fun openProjectFromPath(path: String) {
@@ -445,6 +470,16 @@ fun main() {
             saveActive()
             true
           }
+          // Ctrl+W — Close tab
+          ctrlOrMeta && event.key == Key.W && !shift -> {
+            activeEditor?.let { requestCloseEditor(it) }
+            true
+          }
+          // Ctrl+Shift+W — Close all tabs
+          ctrlOrMeta && shift && event.key == Key.W -> {
+            closeAllEditors()
+            true
+          }
           // Ctrl+Shift+F — Find in Files
           ctrlOrMeta && shift && event.key == Key.F -> {
             findInFilesVisible = true
@@ -530,6 +565,22 @@ fun main() {
             "Save All",
             enabled = openEditors.any { it.isModified },
             onClick = { saveAll() }
+          )
+          Separator()
+          Item(
+            "Close Tab",
+            enabled = activeEditor != null,
+            onClick = { activeEditor?.let { requestCloseEditor(it) } }
+          )
+          Item(
+            "Close Other Tabs",
+            enabled = openEditors.size > 1 && activeEditor != null,
+            onClick = { closeOtherTabs() }
+          )
+          Item(
+            "Close All Tabs",
+            enabled = openEditors.isNotEmpty(),
+            onClick = { closeAllEditors() }
           )
           Separator()
           Item("Settings…", onClick = { settingsVisible = true })
@@ -818,13 +869,7 @@ fun main() {
           activeEditor = it
           selectedFile = it.file
         },
-        onRequestClose = { editor ->
-          if (editor.isModified) {
-            pendingCloseEditor = editor
-          } else {
-            doCloseEditor(editor)
-          }
-        },
+        onRequestClose = { editor -> requestCloseEditor(editor) },
         onCloseConfirm = { editor, result ->
           when (result) {
             CloseConfirmResult.SAVE -> {
