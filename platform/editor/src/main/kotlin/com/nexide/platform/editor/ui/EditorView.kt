@@ -336,6 +336,64 @@ fun EditorView(
     modifiedTick++
   }
 
+  /**
+   * Moves the current line (or selected lines) up or down by one line.
+   */
+  fun moveLines(up: Boolean) {
+    val sel = textFieldValue.selection
+    val start = minOf(sel.start, sel.end)
+    val end = maxOf(sel.start, sel.end)
+    val lineStart = text.lastIndexOf('\n', (start - 1).coerceAtLeast(0)).let {
+      if (it < 0) 0 else it + 1
+    }
+    val lineEnd = text.indexOf('\n', if (end > start) (end - 1).coerceAtLeast(0) else end).let {
+      if (it < 0) text.length else it
+    }
+    val block = text.substring(lineStart, lineEnd)
+
+    if (up) {
+      if (lineStart == 0) return
+      val prevStart = text.lastIndexOf('\n', lineStart - 2).let { if (it < 0) 0 else it + 1 }
+      val prevLine = text.substring(prevStart, lineStart - 1)
+      val after = if (lineEnd < text.length) text.substring(lineEnd + 1) else ""
+      val finalText = buildString {
+        append(text.substring(0, prevStart))
+        append(block)
+        append('\n')
+        append(prevLine)
+        if (after.isNotEmpty() || lineEnd < text.length) {
+          append('\n')
+          append(after)
+        }
+      }
+      editor.replaceText(finalText)
+      editor.undoManager.recordChange()
+      textFieldValue = TextFieldValue(finalText, TextRange(prevStart, prevStart + block.length))
+    } else {
+      if (lineEnd >= text.length) return
+      val nextStart = lineEnd + 1
+      val nextEnd = text.indexOf('\n', nextStart).let { if (it < 0) text.length else it }
+      val nextLine = text.substring(nextStart, nextEnd)
+      val after = if (nextEnd < text.length) text.substring(nextEnd + 1) else ""
+      val finalText = buildString {
+        append(text.substring(0, lineStart))
+        append(nextLine)
+        append('\n')
+        append(block)
+        if (after.isNotEmpty() || nextEnd < text.length) {
+          append('\n')
+          append(after)
+        }
+      }
+      val newStart = lineStart + nextLine.length + 1
+      editor.replaceText(finalText)
+      editor.undoManager.recordChange()
+      textFieldValue = TextFieldValue(finalText, TextRange(newStart, newStart + block.length))
+    }
+    statusMessage = if (up) "Moved up" else "Moved down"
+    modifiedTick++
+  }
+
   val onTextChange: (TextFieldValue) -> Unit = { newValue ->
     if (newValue.text != textFieldValue.text) {
       editor.document.setText(newValue.text)
