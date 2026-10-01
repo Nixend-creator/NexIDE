@@ -131,12 +131,13 @@ class RunConfigurationManager {
       }
       RunConfigurationType.APPLICATION -> {
         val main = config.mainClass.ifBlank { return null }
-        val cp = ApplicationClasspath.collect(dir)
+        // Prefer Gradle-resolved runtime classpath, then local build dirs
+        val cp = GradleClasspathResolver.resolveRuntimeClasspath(dir)
+          ?: ApplicationClasspath.collectLocal(dir)
         if (cp.isNotBlank()) {
           Logger.info("Application classpath entries: ${cp.split(File.pathSeparator).size}")
           listOf("java", "-cp", cp, main)
         } else if (GradleRunSupport.isGradleProject(dir)) {
-          // Fallback: Gradle application plugin / run task with main class property
           val gradle = GradleRunSupport.findGradleCommand(dir) ?: return null
           gradle + listOf(
             "run",
@@ -214,7 +215,10 @@ object MainClassDiscovery {
  * Builds a best-effort runtime classpath from Gradle output dirs and jars.
  */
 object ApplicationClasspath {
-  fun collect(projectDir: File): String {
+  /** @deprecated use collectLocal or GradleClasspathResolver */
+  fun collect(projectDir: File): String = collectLocal(projectDir)
+
+  fun collectLocal(projectDir: File): String {
     val paths = linkedSetOf<String>()
     val skip = setOf(".git", ".gradle", "node_modules", ".idea")
     // Prefer compiled output
