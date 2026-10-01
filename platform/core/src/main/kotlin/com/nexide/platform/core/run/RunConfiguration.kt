@@ -220,40 +220,36 @@ object ApplicationClasspath {
 
   fun collectLocal(projectDir: File): String {
     val paths = linkedSetOf<String>()
-    val skip = setOf(".git", ".gradle", "node_modules", ".idea")
-    // Prefer compiled output
-    listOf(
+    val skip = setOf(".git", ".gradle", "node_modules", ".idea", "build", "out")
+    val rels = listOf(
       "build/classes/java/main",
       "build/classes/kotlin/main",
       "build/resources/main",
       "out/production/classes",
       "out/production/resources"
-    ).forEach { rel ->
-      val f = File(projectDir, rel)
-      if (f.isDirectory) paths.add(f.absolutePath)
-    }
-    // Module build dirs (multi-module)
-    projectDir.listFiles()?.filter { it.isDirectory && it.name !in skip }?.forEach { mod ->
-      listOf(
-        "build/classes/java/main",
-        "build/classes/kotlin/main",
-        "build/resources/main"
-      ).forEach { rel ->
-        val f = File(mod, rel)
+    )
+    fun addOutputs(dir: File) {
+      rels.forEach { rel ->
+        val f = File(dir, rel)
         if (f.isDirectory) paths.add(f.absolutePath)
       }
-      val libs = File(mod, "build/libs")
+      // jars from build/libs
+      val libs = File(dir, "build/libs")
       if (libs.isDirectory) {
-        libs.listFiles()?.filter { it.extension == "jar" && !it.name.contains("-sources") }?.forEach {
+        libs.listFiles()?.filter { it.isFile && it.extension == "jar" }?.forEach {
           paths.add(it.absolutePath)
         }
       }
     }
-    val rootLibs = File(projectDir, "build/libs")
-    if (rootLibs.isDirectory) {
-      rootLibs.listFiles()?.filter { it.extension == "jar" }?.forEach { paths.add(it.absolutePath) }
+    addOutputs(projectDir)
+    // Immediate submodules
+    projectDir.listFiles()?.filter { it.isDirectory && it.name !in skip }?.forEach { mod ->
+      addOutputs(mod)
+      // Nested (e.g. platform/core)
+      mod.listFiles()?.filter { it.isDirectory && it.name !in skip }?.forEach { nested ->
+        addOutputs(nested)
+      }
     }
-    val sep = File.pathSeparator
-    return paths.joinToString(sep)
+    return paths.joinToString(File.pathSeparator)
   }
 }

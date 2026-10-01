@@ -122,16 +122,31 @@ object GradleClasspathResolver {
     }
   }
 
+  /**
+   * Collects all NEXIDE_CP_BEGIN/END blocks (one per Gradle subproject) and merges unique entries.
+   */
   internal fun parseClasspathOutput(output: String): String? {
-    val begin = output.indexOf(BEGIN)
-    val end = output.indexOf(END)
-    if (begin < 0 || end < 0 || end <= begin) return null
-    val body = output.substring(begin + BEGIN.length, end).trim()
-    return body.ifBlank { null }
+    val entries = linkedSetOf<String>()
+    var searchFrom = 0
+    while (true) {
+      val begin = output.indexOf(BEGIN, searchFrom)
+      if (begin < 0) break
+      val end = output.indexOf(END, begin + BEGIN.length)
+      if (end < 0) break
+      val body = output.substring(begin + BEGIN.length, end).trim()
+      if (body.isNotEmpty()) {
+        body.split(File.pathSeparatorChar).map { it.trim() }.filter { it.isNotEmpty() }.forEach {
+          entries.add(it)
+        }
+      }
+      searchFrom = end + END.length
+    }
+    if (entries.isEmpty()) return null
+    return entries.joinToString(File.pathSeparator)
   }
 
   private val INIT_SCRIPT = """
-    // Injected by NexIDE — prints runtimeClasspath for the root project
+    // Injected by NexIDE — prints runtimeClasspath for every subproject
     gradle.projectsLoaded {
       rootProject.allprojects { p ->
         p.afterEvaluate {
@@ -142,15 +157,20 @@ object GradleClasspathResolver {
               def cfg = p.configurations.findByName("runtimeClasspath")
               if (cfg == null) cfg = p.configurations.findByName("runtime")
               if (cfg == null) cfg = p.configurations.findByName("compileClasspath")
+              println("$BEGIN")
               if (cfg != null && cfg.canBeResolved) {
-                println("$BEGIN")
-                println(cfg.asPath)
-                println("$END")
-              } else {
-                println("$BEGIN")
-                println("")
-                println("$END")
+                try {
+                  println(cfg.asPath)
+                } catch (Exception ignored) {
+                  // configuration may not resolve in all subprojects
+                }
               }
+              // Always include this project's compiled output dirs when present
+              ["build/classes/java/main", "build/classes/kotlin/main", "build/resources/main"].each { rel ->
+                def f = p.file(rel)
+                if (f.directory) println(f.absolutePath)
+              }
+              println("$END")
             }
           }
         }

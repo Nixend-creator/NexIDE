@@ -35,7 +35,28 @@ class GradleClasspathResolverTest {
   @Test
   fun `invalidate clears cache`() {
     GradleClasspathResolver.invalidate()
-    // smoke: does not throw
     assertNull(GradleClasspathResolver.parseClasspathOutput(""))
+  }
+
+  @Test
+  fun `merges multiple module classpath blocks`() {
+    val sep = File.pathSeparator
+    val out = """
+      NEXIDE_CP_BEGIN
+      /m1/classes${sep}/dep-a.jar
+      NEXIDE_CP_END
+      noise
+      NEXIDE_CP_BEGIN
+      /m2/classes${sep}/dep-a.jar${sep}/dep-b.jar
+      NEXIDE_CP_END
+    """.trimIndent()
+    val cp = GradleClasspathResolver.parseClasspathOutput(out)
+    assertNotNull(cp)
+    val parts = cp!!.split(sep)
+    assertTrue(parts.contains("/m1/classes"))
+    assertTrue(parts.contains("/m2/classes"))
+    assertTrue(parts.contains("/dep-b.jar"))
+    // deduped
+    assertEquals(1, parts.count { it == "/dep-a.jar" })
   }
 }
