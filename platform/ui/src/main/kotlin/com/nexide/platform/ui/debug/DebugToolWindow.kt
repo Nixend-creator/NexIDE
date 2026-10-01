@@ -270,8 +270,10 @@ fun DebugToolWindow(
         modifier = Modifier.padding(horizontal = 8.dp, vertical = 2.dp)
       )
     }
-    // Watches editor row
+    // Watches + evaluate
     var watchInput by remember { mutableStateOf("") }
+    var evalInput by remember { mutableStateOf("") }
+    var evalResult by remember { mutableStateOf<String?>(null) }
     var watchTick by remember { mutableStateOf(0) }
     val watchResults = remember(suspended, attached, watchTick) {
       jdiConnector.evaluateWatches()
@@ -304,6 +306,40 @@ fun DebugToolWindow(
       ) {
         Text("Add", style = MaterialTheme.typography.labelMedium)
       }
+    }
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 8.dp, vertical = 2.dp),
+      verticalAlignment = Alignment.CenterVertically
+    ) {
+      Text("Eval:", style = MaterialTheme.typography.labelSmall, modifier = Modifier.padding(end = 6.dp))
+      BasicTextField(
+        value = evalInput,
+        onValueChange = { evalInput = it },
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurface),
+        cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
+        modifier = Modifier
+          .weight(1f)
+          .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.small)
+          .padding(6.dp)
+      )
+      TextButton(
+        onClick = {
+          evalResult = jdiConnector.evaluateExpression(evalInput)
+        },
+        enabled = evalInput.isNotBlank() && suspended != null
+      ) {
+        Text("Evaluate", style = MaterialTheme.typography.labelMedium)
+      }
+    }
+    evalResult?.let { res ->
+      Text(
+        text = "⇒ $res",
+        style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+        modifier = Modifier.padding(horizontal = 12.dp, vertical = 2.dp)
+      )
     }
 
     Row(

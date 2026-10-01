@@ -52,7 +52,8 @@ data class IdeUiState(
   val breakpointsVisible: Boolean = false,
   val structureVisible: Boolean = false,
   val findInFilesVisible: Boolean = false,
-  val projectExpandPaths: Set<String> = emptySet()
+  val projectExpandPaths: Set<String> = emptySet(),
+  val pinnedPaths: Set<String> = emptySet()
 )
 
 /**
@@ -78,5 +79,6 @@ data class IdeUiCallbacks(
   val onOpenRecent: (String) -> Unit = {},
   val onSelectEditor: (Editor) -> Unit = {},
   val onRequestClose: (Editor) -> Unit = {},
-  val onCloseConfirm: (Editor, CloseConfirmResult) -> Unit = { _, _ -> }
+  val onCloseConfirm: (Editor, CloseConfirmResult) -> Unit = { _, _ -> },
+  val onTogglePin: (Editor) -> Unit = {}
 )

@@ -46,6 +46,8 @@ fun IdeEditorArea(
   onRequestClose: (Editor) -> Unit,
   onOpenProject: () -> Unit,
   onOpenRecent: (String) -> Unit,
+  pinnedPaths: Set<String> = emptySet(),
+  onTogglePin: (Editor) -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   Column(modifier = modifier.fillMaxHeight()) {
@@ -53,7 +55,9 @@ fun IdeEditorArea(
       editors = openEditors,
       activeEditor = activeEditor,
       onSelect = onSelectEditor,
-      onClose = onRequestClose
+      onClose = onRequestClose,
+      pinnedPaths = pinnedPaths,
+      onTogglePin = onTogglePin
     )
 
     val editor = activeEditor

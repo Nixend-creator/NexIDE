@@ -44,6 +44,8 @@ fun EditorTabs(
   activeEditor: Editor?,
   onSelect: (Editor) -> Unit,
   onClose: (Editor) -> Unit,
+  pinnedPaths: Set<String> = emptySet(),
+  onTogglePin: (Editor) -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   if (editors.isEmpty()) return
@@ -58,13 +60,16 @@ fun EditorTabs(
       .padding(horizontal = 4.dp, vertical = 2.dp),
     verticalAlignment = Alignment.CenterVertically
   ) {
-    editors.forEach { editor ->
+    val ordered = editors.sortedBy { if (it.file.path in pinnedPaths) 0 else 1 }
+    ordered.forEach { editor ->
       val isActive = editor === activeEditor
+      val pinned = editor.file.path in pinnedPaths
       TabItem(
-        title = editor.file.name + if (editor.isModified) " *" else "",
+        title = (if (pinned) "📌 " else "") + editor.file.name + if (editor.isModified) " *" else "",
         isActive = isActive,
         onClick = { onSelect(editor) },
-        onClose = { onClose(editor) }
+        onClose = { if (!pinned) onClose(editor) },
+        onTogglePin = { onTogglePin(editor) }
       )
     }
   }
@@ -75,7 +80,8 @@ private fun TabItem(
   title: String,
   isActive: Boolean,
   onClick: () -> Unit,
-  onClose: () -> Unit
+  onClose: () -> Unit,
+  onTogglePin: () -> Unit = {}
 ) {
   val background = if (isActive) {
     MaterialTheme.colorScheme.surface
@@ -104,7 +110,15 @@ private fun TabItem(
       maxLines = 1,
       overflow = TextOverflow.Ellipsis
     )
-    Spacer(modifier = Modifier.width(6.dp))
+    Spacer(modifier = Modifier.width(4.dp))
+    Text(
+      text = "📌",
+      style = MaterialTheme.typography.labelSmall,
+      color = textColor,
+      modifier = Modifier
+        .clickable(onClick = onTogglePin)
+        .padding(horizontal = 2.dp)
+    )
     Text(
       text = "×",
       style = MaterialTheme.typography.labelLarge,

@@ -61,3 +61,25 @@ class SymbolIndexTest {
     assertTrue(hits.any { it.name == "SampleService" })
   }
 }
+
+  @Test
+  fun `reindexes single file without full rebuild`() {
+    val root = tempDir.toFile()
+    val a = File(root, "A.kt")
+    a.writeText("class Alpha")
+    SymbolIndex.invalidate()
+    SymbolIndex.rebuild(root)
+    assertTrue(SymbolIndex.exact("Alpha").isNotEmpty())
+
+    a.writeText("class Alpha\nclass Beta")
+    SymbolIndex.reindexFile(a)
+    assertTrue(SymbolIndex.exact("Beta").isNotEmpty())
+    assertTrue(SymbolIndex.exact("Alpha").isNotEmpty())
+
+    a.writeText("class Gamma")
+    SymbolIndex.reindexFile(a)
+    assertTrue(SymbolIndex.exact("Gamma").isNotEmpty())
+    assertTrue(SymbolIndex.exact("Alpha").isEmpty())
+    assertTrue(SymbolIndex.exact("Beta").isEmpty())
+  }
+}

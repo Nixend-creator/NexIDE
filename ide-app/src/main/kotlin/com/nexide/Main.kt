@@ -136,6 +136,7 @@ fun main() {
     var searchEverywhereVisible by mutableStateOf(false)
     var projectExpandPaths by mutableStateOf<Set<String>>(emptySet())
     var bookmarksVisible by mutableStateOf(false)
+    var pinnedPaths by mutableStateOf<Set<String>>(emptySet())
     var bookmarksTick by mutableStateOf(0)
 
     var activeEditor by mutableStateOf<Editor?>(null)
@@ -342,6 +343,7 @@ fun main() {
 
     fun closeAllEditors() {
       openEditors.toList().forEach { ed ->
+        if (ed.file.path in pinnedPaths) return@forEach
         if (ed.isModified) {
           ed.save()
           Logger.info("Saved before close: ${ed.file.name}")
@@ -413,9 +415,22 @@ fun main() {
       }.start()
     }
 
+    fun reindexSavedFiles(files: List<File>) {
+      if (files.isEmpty()) return
+      Thread {
+        try {
+          files.forEach { SymbolIndex.reindexFile(it) }
+          Logger.info("SymbolIndex reindexed ${files.size} file(s)")
+        } catch (e: Exception) {
+          Logger.warn("SymbolIndex reindexFile failed: ${e.message}")
+        }
+      }.start()
+    }
+
     fun saveActive() {
-      val ok = activeEditor?.save() == true
-      if (ok) reindexProject()
+      val ed = activeEditor
+      val ok = ed?.save() == true
+      if (ok && ed != null) reindexSavedFiles(listOf(File(ed.file.path)))
     }
 
     fun lineNumberAt(text: String, offset: Int): Int {
@@ -512,15 +527,14 @@ fun main() {
     }
 
     fun saveAll() {
-      var count = 0
+      val saved = mutableListOf<File>()
       openEditors.forEach { ed ->
         if (ed.isModified) {
-          ed.save()
-          count++
+          if (ed.save()) saved.add(File(ed.file.path))
         }
       }
-      Logger.info("Save All: $count file(s)")
-      if (count > 0) reindexProject()
+      Logger.info("Save All: ${saved.size} file(s)")
+      reindexSavedFiles(saved)
     }
 
     fun navigateToTarget(target: NavigationTarget) {
@@ -1040,7 +1054,8 @@ fun main() {
           breakpointsVisible = breakpointsVisible,
           structureVisible = structureVisible,
           findInFilesVisible = findInFilesVisible,
-          projectExpandPaths = projectExpandPaths
+          projectExpandPaths = projectExpandPaths,
+          pinnedPaths = pinnedPaths
         ),
         callbacks = IdeUiCallbacks(
           onRunPanelVisibleChange = { runPanelVisible = it },
@@ -1077,6 +1092,10 @@ fun main() {
             selectedFile = it.file
           },
           onRequestClose = { editor -> requestCloseEditor(editor) },
+          onTogglePin = { ed ->
+            pinnedPaths = if (ed.file.path in pinnedPaths) pinnedPaths - ed.file.path
+            else pinnedPaths + ed.file.path
+          },
           onCloseConfirm = { editor, result ->
             when (result) {
               CloseConfirmResult.SAVE -> {
@@ -1127,6 +1146,7 @@ fun NexIdeApp(
   val structureVisible = state.structureVisible
   val findInFilesVisible = state.findInFilesVisible
   val projectExpandPaths = state.projectExpandPaths
+  val pinnedPaths = state.pinnedPaths
 
   val onRunPanelVisibleChange = callbacks.onRunPanelVisibleChange
   val onDebugPanelVisibleChange = callbacks.onDebugPanelVisibleChange
@@ -1148,6 +1168,7 @@ fun NexIdeApp(
   val onSelectEditor = callbacks.onSelectEditor
   val onRequestClose = callbacks.onRequestClose
   val onCloseConfirm = callbacks.onCloseConfirm
+  val onTogglePin = callbacks.onTogglePin
   val colors = if (darkTheme) darkColorScheme() else lightColorScheme()
   MaterialTheme(colorScheme = colors) {
     Box(Modifier.fillMaxSize()) {
@@ -1185,6 +1206,8 @@ fun NexIdeApp(
             onRequestClose = onRequestClose,
             onOpenProject = onOpenProject,
             onOpenRecent = onOpenRecent,
+            pinnedPaths = pinnedPaths,
+            onTogglePin = onTogglePin,
             modifier = Modifier.weight(1f)
           )
 
