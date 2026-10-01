@@ -63,6 +63,7 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.nexide.platform.core.Bookmarks
 import com.nexide.platform.core.debug.BreakpointManager
 import com.nexide.platform.core.git.GitDiffGutter
 import com.nexide.platform.core.git.GitOperations
@@ -837,15 +838,26 @@ fun EditorView(
       if (showGutter) {
         val bpManager = remember { BreakpointManager.getInstance() }
         var bpTick by remember { mutableStateOf(0) }
+        var bmTick by remember { mutableStateOf(0) }
         DisposableEffect(bpManager, editor.file.path) {
           val listener = { bpTick++ }
           bpManager.addListener(listener)
           onDispose { bpManager.removeListener(listener) }
         }
+        DisposableEffect(editor.file.path) {
+          val listener = { bmTick++ }
+          Bookmarks.addListener(listener)
+          onDispose { Bookmarks.removeListener(listener) }
+        }
         @Suppress("UNUSED_EXPRESSION")
         bpTick
+        @Suppress("UNUSED_EXPRESSION")
+        bmTick
         val bpLines = remember(bpTick, editor.file.path) {
           bpManager.getForFile(editor.file.path).map { it.line }.toSet()
+        }
+        val bookmarkLines = remember(bmTick, editor.file.path) {
+          Bookmarks.list().filter { it.filePath == editor.file.path }.map { it.line }.toSet()
         }
         val diffLines = remember(editor.file.path, editor.contentRevision, projectRootPath) {
           val root = projectRootPath?.let { File(it) }
@@ -890,15 +902,18 @@ fun EditorView(
                   .background(diffColor)
               )
               val hasError = line in problemLines
+              val hasBm = line in bookmarkLines
               Text(
                 text = when {
                   hasBp -> "●"
+                  hasBm -> "◆"
                   hasError -> "!"
                   else -> " "
                 },
                 style = gutterStyle.copy(
                   color = when {
                     hasBp -> Color(0xFFE53935)
+                    hasBm -> Color(0xFFFFC107)
                     hasError -> Color(0xFFFF5252)
                     else -> Color.Transparent
                   },

@@ -18,6 +18,7 @@ package com.nexide.platform.core
 
 import com.nexide.platform.util.Logger
 import java.io.File
+import java.util.concurrent.CopyOnWriteArrayList
 
 data class Bookmark(
   val filePath: String,
@@ -33,6 +34,11 @@ data class Bookmark(
 object Bookmarks {
   private val items = linkedMapOf<String, Bookmark>()
   private var loaded = false
+  private val listeners = CopyOnWriteArrayList<() -> Unit>()
+
+  fun addListener(listener: () -> Unit) { listeners.add(listener) }
+  fun removeListener(listener: () -> Unit) { listeners.remove(listener) }
+  private fun notifyListeners() { listeners.forEach { it() } }
 
   private fun storeFile(): File =
     File(System.getProperty("user.home"), ".nexide/bookmarks.txt").also {
@@ -69,6 +75,7 @@ object Bookmarks {
     } catch (e: Exception) {
       Logger.warn("Bookmarks save: ${e.message}")
     }
+    notifyListeners()
   }
 
   fun list(): List<Bookmark> {
