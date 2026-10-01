@@ -603,161 +603,97 @@ fun main() {
       title = "NexIDE — ${project.name}",
       state = windowState,
       onKeyEvent = { event ->
-        if (event.type != KeyEventType.KeyDown) return@Window false
-        val ctrlOrMeta = event.isCtrlPressed || event.isMetaPressed
-        val shift = event.isShiftPressed
-        when {
-          // Escape — close topmost dialog / tool window
-          event.key == Key.Escape -> {
-            when {
-              commandPaletteVisible -> { commandPaletteVisible = false; true }
-              searchEverywhereVisible -> { searchEverywhereVisible = false; true }
-              recentFilesVisible -> { recentFilesVisible = false; true }
-              bookmarksVisible -> { bookmarksVisible = false; true }
-              marketplaceVisible -> { marketplaceVisible = false; true }
-              settingsVisible -> { settingsVisible = false; true }
-              runConfigDialogVisible -> { runConfigDialogVisible = false; true }
-              gotoTargets != null -> { gotoTargets = null; true }
-              renameSymbol != null -> { renameSymbol = null; true }
-              findInFilesVisible -> { findInFilesVisible = false; true }
-              problemsVisible -> { problemsVisible = false; true }
-              breakpointsVisible -> { breakpointsVisible = false; true }
-              debugPanelVisible -> { debugPanelVisible = false; true }
-              runPanelVisible -> { runPanelVisible = false; true }
-              gitPanelVisible -> { gitPanelVisible = false; true }
-              terminalVisible -> { terminalVisible = false; true }
-              structureVisible -> { structureVisible = false; true }
-              else -> false
+        IdeKeyMap.handle(
+          event = event,
+          escape = IdeEscapeStack(
+            dismissCommandPalette = {
+              if (commandPaletteVisible) { commandPaletteVisible = false; true } else false
+            },
+            dismissSearchEverywhere = {
+              if (searchEverywhereVisible) { searchEverywhereVisible = false; true } else false
+            },
+            dismissRecentFiles = {
+              if (recentFilesVisible) { recentFilesVisible = false; true } else false
+            },
+            dismissBookmarks = {
+              if (bookmarksVisible) { bookmarksVisible = false; true } else false
+            },
+            dismissMarketplace = {
+              if (marketplaceVisible) { marketplaceVisible = false; true } else false
+            },
+            dismissSettings = {
+              if (settingsVisible) { settingsVisible = false; true } else false
+            },
+            dismissRunConfig = {
+              if (runConfigDialogVisible) { runConfigDialogVisible = false; true } else false
+            },
+            dismissGoto = {
+              if (gotoTargets != null) { gotoTargets = null; true } else false
+            },
+            dismissRename = {
+              if (renameSymbol != null) { renameSymbol = null; true } else false
+            },
+            dismissFindInFiles = {
+              if (findInFilesVisible) { findInFilesVisible = false; true } else false
+            },
+            dismissProblems = {
+              if (problemsVisible) { problemsVisible = false; true } else false
+            },
+            dismissBreakpoints = {
+              if (breakpointsVisible) { breakpointsVisible = false; true } else false
+            },
+            dismissDebug = {
+              if (debugPanelVisible) { debugPanelVisible = false; true } else false
+            },
+            dismissRun = {
+              if (runPanelVisible) { runPanelVisible = false; true } else false
+            },
+            dismissGit = {
+              if (gitPanelVisible) { gitPanelVisible = false; true } else false
+            },
+            dismissTerminal = {
+              if (terminalVisible) { terminalVisible = false; true } else false
+            },
+            dismissStructure = {
+              if (structureVisible) { structureVisible = false; true } else false
             }
-          }
-          // Ctrl+O — Open Project
-          ctrlOrMeta && event.key == Key.O -> {
-            chooseAndOpenProject()
-            true
-          }
-          // Ctrl+E — Recent Files
-          ctrlOrMeta && event.key == Key.E && !shift -> {
-            recentFilesVisible = true
-            true
-          }
-          // Ctrl+Shift+A — Command Palette
-          ctrlOrMeta && shift && event.key == Key.A -> {
-            commandPaletteVisible = true
-            true
-          }
-          // Ctrl+N — Search Everywhere
-          ctrlOrMeta && event.key == Key.N && !shift -> {
-            searchEverywhereVisible = true
-            true
-          }
-          // Ctrl+= / Ctrl+Plus — zoom in
-          ctrlOrMeta && (event.key == Key.Equals || event.key == Key.Plus) -> {
-            zoomEditor(1)
-            true
-          }
-          // Ctrl+- — zoom out
-          ctrlOrMeta && event.key == Key.Minus -> {
-            zoomEditor(-1)
-            true
-          }
-          // Ctrl+0 — reset zoom
-          ctrlOrMeta && event.key == Key.Zero && !shift -> {
-            resetEditorZoom()
-            true
-          }
-          // F11 — toggle bookmark
-          event.key == Key.F11 && !shift && !ctrlOrMeta -> {
-            toggleBookmark()
-            true
-          }
-          // Shift+F11 — next bookmark
-          event.key == Key.F11 && shift && !ctrlOrMeta -> {
-            goToNextBookmark()
-            true
-          }
-          // Ctrl+F11 — bookmarks list
-          ctrlOrMeta && event.key == Key.F11 -> {
-            bookmarksVisible = true
-            true
-          }
-          // Ctrl+Shift+S — Save All
-          ctrlOrMeta && shift && event.key == Key.S -> {
-            saveAll()
-            true
-          }
-          // Ctrl+S — Save
-          ctrlOrMeta && event.key == Key.S -> {
-            saveActive()
-            true
-          }
-          // Ctrl+W — Close tab
-          ctrlOrMeta && event.key == Key.W && !shift -> {
-            activeEditor?.let { requestCloseEditor(it) }
-            true
-          }
-          // Ctrl+Shift+W — Close all tabs
-          ctrlOrMeta && shift && event.key == Key.W -> {
-            closeAllEditors()
-            true
-          }
-          // Ctrl+Shift+F — Find in Files
-          ctrlOrMeta && shift && event.key == Key.F -> {
-            findInFilesVisible = true
-            true
-          }
-          // Ctrl+Shift+B / Ctrl+F9 — Build Project
-          (ctrlOrMeta && shift && event.key == Key.B) ||
-            (ctrlOrMeta && event.key == Key.F9) -> {
-            buildProject()
-            true
-          }
-          // Ctrl+Alt+S — Settings
-          ctrlOrMeta && event.isAltPressed && event.key == Key.S -> {
-            settingsVisible = true
-            true
-          }
-          // Ctrl+Shift+F12 — Problems
-          ctrlOrMeta && shift && event.key == Key.F12 -> {
-            problemsVisible = true
-            true
-          }
-          // F8 — Toggle breakpoint on line 1 fallback (gutter is primary)
-          event.key == Key.F8 && activeEditor != null -> {
-            val ed = activeEditor!!
-            BreakpointManager.getInstance().toggle(ed.file.path, 1)
-            breakpointsVisible = true
-            true
-          }
-          // Shift+F10 — Run selected configuration
-          shift && event.key == Key.F10 && runConfigManager.selected != null -> {
-            runConfigManager.selected?.let { runConfiguration(it, debug = false) }
-            true
-          }
-          // Shift+F9 — Debug selected configuration
-          shift && event.key == Key.F9 && runConfigManager.selected != null -> {
-            runConfigManager.selected?.let { runConfiguration(it, debug = true) }
-            true
-          }
-          // Ctrl+B — Go to Declaration
-          ctrlOrMeta && event.key == Key.B && !shift -> {
-            gotoDeclaration()
-            true
-          }
-          // Alt+F7 — Find Usages
-          event.isAltPressed && event.key == Key.F7 -> {
-            findUsages()
-            true
-          }
-          // Shift+F6 — Rename
-          event.isShiftPressed && event.key == Key.F6 -> {
-            startRename()
-            true
-          }
-          else -> false
-        }
+          ),
+          hasEditor = activeEditor != null,
+          hasRunConfig = runConfigManager.selected != null,
+          openProject = { chooseAndOpenProject() },
+          recentFiles = { recentFilesVisible = true },
+          findAction = { commandPaletteVisible = true },
+          searchEverywhere = { searchEverywhereVisible = true },
+          zoomIn = { zoomEditor(1) },
+          zoomOut = { zoomEditor(-1) },
+          zoomReset = { resetEditorZoom() },
+          toggleBookmark = { toggleBookmark() },
+          nextBookmark = { goToNextBookmark() },
+          showBookmarks = { bookmarksVisible = true },
+          save = { saveActive() },
+          saveAll = { saveAll() },
+          closeTab = { activeEditor?.let { requestCloseEditor(it) } },
+          closeAll = { closeAllEditors() },
+          findInFiles = { findInFilesVisible = true },
+          build = { buildProject() },
+          settings = { settingsVisible = true },
+          problems = { problemsVisible = true },
+          toggleBreakpoint = {
+            activeEditor?.let { ed ->
+              BreakpointManager.getInstance().toggle(ed.file.path, 1)
+              breakpointsVisible = true
+            }
+          },
+          run = { runConfigManager.selected?.let { runConfiguration(it, debug = false) } },
+          debug = { runConfigManager.selected?.let { runConfiguration(it, debug = true) } },
+          gotoDeclaration = { gotoDeclaration() },
+          findUsages = { findUsages() },
+          rename = { startRename() }
+        )
       }
     ) {
       IdeMenuBar(
+
         hasEditor = activeEditor != null,
         hasModified = openEditors.any { it.isModified },
         tabCount = openEditors.size,
