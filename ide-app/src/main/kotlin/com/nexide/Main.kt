@@ -215,6 +215,7 @@ fun main() {
           Logger.info("Build finished ($exitCode): ${problems.size} problem(s)")
           if (problems.isEmpty()) NotificationService.success("Build OK")
           else NotificationService.warn("Build", "${problems.size} problem(s)")
+          reindexProject()
         }
       }
       processRunner.addListener(listener)
@@ -401,7 +402,8 @@ fun main() {
     }
 
     fun saveActive() {
-      activeEditor?.save()
+      val ok = activeEditor?.save() == true
+      if (ok) reindexProject()
     }
 
     fun lineNumberAt(text: String, offset: Int): Int {
@@ -506,6 +508,7 @@ fun main() {
         }
       }
       Logger.info("Save All: $count file(s)")
+      if (count > 0) reindexProject()
     }
 
     fun navigateToTarget(target: NavigationTarget) {

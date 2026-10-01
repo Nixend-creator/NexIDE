@@ -29,6 +29,11 @@ object SymbolIndex {
     rootPath = null
   }
 
+  /** Full rebuild — call after save/build so completion stays current. */
+  fun refresh(projectRoot: File) {
+    rebuild(projectRoot)
+  }
+
   fun ensureIndexed(projectRoot: File) {
     val path = projectRoot.canonicalPath
     if (rootPath == path && byName.isNotEmpty()) return
