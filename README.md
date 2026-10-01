@@ -75,6 +75,44 @@ Current capabilities:
 - Plugin marketplace stub (~/.nexide/plugins)
 - Debugger watches evaluation
 - ide-web/ scaffold for future web target
+- Single-file symbol reindex on Save
+- Debug Evaluate expression
+- Pin editor tabs
+- Live syntax checks (unmatched braces / unclosed strings)
+- IdeActionCatalog + IdeKeyShortcuts
+
+## Run
+
+```bash
+# JDK 17+ (21 preferred when full JDK with ct.sym is available)
+export JAVA_HOME=...
+./gradlew :ide-app:run
+```
+
+### Tests
+
+```bash
+./gradlew :platform:editor:test --tests "com.nexide.platform.editor.*"
+./gradlew :platform:core:test --tests "com.nexide.platform.core.index.*"
+```
+
+### Key shortcuts (window)
+
+| Action | Shortcut |
+|--------|----------|
+| Open Project | Ctrl+O |
+| Save / Save All | Ctrl+S / Ctrl+Shift+S |
+| Recent Files | Ctrl+E |
+| Find Action | Ctrl+Shift+A |
+| Search Everywhere | Ctrl+N |
+| Find in Files | Ctrl+Shift+F |
+| Go to Declaration | Ctrl+B |
+| Rename | Shift+F6 |
+| Build | Ctrl+F9 |
+| Run / Debug | Shift+F10 / Shift+F9 |
+| Toggle Bookmark | F11 |
+| Zoom | Ctrl+= / − / 0 |
+
 
 ## Tech Stack
 

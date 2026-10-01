@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import com.nexide.platform.core.build.LiveSyntaxChecker
 import com.nexide.platform.core.build.Problem
 import com.nexide.platform.editor.Editor
 import com.nexide.platform.editor.ui.EditorView
@@ -50,6 +51,21 @@ fun IdeEditorArea(
   onTogglePin: (Editor) -> Unit = {},
   modifier: Modifier = Modifier
 ) {
+  fun problemLinesFor(ed: Editor): Set<Int> {
+    val fromBuild = problems
+      .filter { it.filePath == ed.file.path && it.line != null }
+      .mapNotNull { it.line }
+      .toSet()
+    val live = try {
+      LiveSyntaxChecker.check(ed.file.path, ed.document.getText())
+        .mapNotNull { it.line }
+        .toSet()
+    } catch (_: Exception) {
+      emptySet()
+    }
+    return fromBuild + live
+  }
+
   Column(modifier = modifier.fillMaxHeight()) {
     EditorTabs(
       editors = openEditors,
@@ -69,7 +85,7 @@ fun IdeEditorArea(
           modifier = Modifier.weight(1f).fillMaxSize(),
           projectRootPath = projectPath,
           settingsRevision = settingsRevision,
-          problemLines = problems.filter { it.filePath == editor.file.path }.mapNotNull { it.line }.toSet()
+          problemLines = problemLinesFor(editor)
         )
         VerticalDivider()
         EditorView(
@@ -77,7 +93,7 @@ fun IdeEditorArea(
           modifier = Modifier.weight(1f).fillMaxSize(),
           projectRootPath = projectPath,
           settingsRevision = settingsRevision,
-          problemLines = problems.filter { it.filePath == secondary.file.path }.mapNotNull { it.line }.toSet()
+          problemLines = problemLinesFor(secondary)
         )
       }
     } else if (editor != null) {
@@ -89,10 +105,7 @@ fun IdeEditorArea(
         onGotoLineHandled = onPendingGoToLineHandled,
         projectRootPath = projectPath,
         settingsRevision = settingsRevision,
-        problemLines = problems
-          .filter { it.filePath == editor.file.path && it.line != null }
-          .mapNotNull { it.line }
-          .toSet()
+        problemLines = problemLinesFor(editor)
       )
     } else {
       WelcomeScreen(
