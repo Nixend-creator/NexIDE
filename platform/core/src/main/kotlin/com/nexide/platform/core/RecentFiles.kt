@@ -16,25 +16,63 @@
 
 package com.nexide.platform.core
 
+import com.nexide.platform.util.Logger
+import java.io.File
 import java.util.LinkedList
 
 /**
- * In-session list of recently opened files (MRU).
+ * MRU recent files, persisted to ~/.nexide/recent-files.txt
  */
 object RecentFiles {
   private const val MAX = 30
   private val paths = LinkedList<String>()
+  private var loaded = false
+
+  private fun storeFile(): File =
+    File(System.getProperty("user.home"), ".nexide/recent-files.txt").also {
+      it.parentFile?.mkdirs()
+    }
+
+  private fun ensureLoaded() {
+    if (loaded) return
+    loaded = true
+    try {
+      val f = storeFile()
+      if (!f.exists()) return
+      f.readLines(Charsets.UTF_8)
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+        .forEach { paths.add(it) }
+    } catch (e: Exception) {
+      Logger.warn("RecentFiles load: ${e.message}")
+    }
+  }
+
+  private fun persist() {
+    try {
+      storeFile().writeText(paths.joinToString("\n"), Charsets.UTF_8)
+    } catch (e: Exception) {
+      Logger.warn("RecentFiles save: ${e.message}")
+    }
+  }
 
   fun add(path: String) {
     if (path.isBlank()) return
+    ensureLoaded()
     paths.remove(path)
     paths.addFirst(path)
     while (paths.size > MAX) paths.removeLast()
+    persist()
   }
 
-  fun list(): List<String> = paths.toList()
+  fun list(): List<String> {
+    ensureLoaded()
+    return paths.toList()
+  }
 
   fun clear() {
+    ensureLoaded()
     paths.clear()
+    persist()
   }
 }
