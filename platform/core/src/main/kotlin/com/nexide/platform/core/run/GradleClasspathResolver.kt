@@ -33,18 +33,61 @@ object GradleClasspathResolver {
   private const val END = "NEXIDE_CP_END"
   private const val TIMEOUT_SEC = 120L
 
+  private data class CacheEntry(val fingerprint: String, val classpath: String)
+  private val cache = java.util.concurrent.ConcurrentHashMap<String, CacheEntry>()
+
+  /** Drop cached classpath for [projectDir] or all if null. */
+  fun invalidate(projectDir: File? = null) {
+    if (projectDir == null) {
+      cache.clear()
+    } else {
+      cache.remove(projectDir.canonicalPath)
+    }
+  }
+
+  private fun fingerprint(projectDir: File): String {
+    val files = listOf(
+      "build.gradle.kts", "build.gradle",
+      "settings.gradle.kts", "settings.gradle",
+      "gradle/libs.versions.toml",
+      "gradle.properties"
+    )
+    return files.joinToString("|") { rel ->
+      val f = File(projectDir, rel)
+      if (f.isFile) "${rel}:${f.length()}:${f.lastModified()}" else "$rel:-"
+    }
+  }
+
   /**
    * @return classpath string (pathSeparator-separated) or null if unresolved
    */
-  fun resolveRuntimeClasspath(projectDir: File): String? {
+  fun resolveRuntimeClasspath(projectDir: File, forceRefresh: Boolean = false): String? {
     if (!GradleRunSupport.isGradleProject(projectDir)) return null
+    val key = try {
+      projectDir.canonicalPath
+    } catch (_: Exception) {
+      projectDir.absolutePath
+    }
+    val fp = fingerprint(projectDir)
+    if (!forceRefresh) {
+      val hit = cache[key]
+      if (hit != null && hit.fingerprint == fp) {
+        Logger.info("Classpath cache hit (${hit.classpath.split(File.pathSeparator).size} entries)")
+        return hit.classpath
+      }
+    }
     val fromGradle = runGradleClasspathTask(projectDir)
     if (!fromGradle.isNullOrBlank()) {
       Logger.info("Gradle classpath entries: ${fromGradle.split(File.pathSeparator).size}")
+      cache[key] = CacheEntry(fp, fromGradle)
       return fromGradle
     }
     val local = ApplicationClasspath.collectLocal(projectDir)
-    return local.ifBlank { null }
+    if (local.isNotBlank()) {
+      cache[key] = CacheEntry(fp, local)
+      return local
+    }
+    return null
   }
 
   private fun runGradleClasspathTask(projectDir: File): String? {

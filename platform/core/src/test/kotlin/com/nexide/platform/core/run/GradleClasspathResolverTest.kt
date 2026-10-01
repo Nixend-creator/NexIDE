@@ -31,4 +31,11 @@ class GradleClasspathResolverTest {
   fun `returns null without markers`() {
     assertNull(GradleClasspathResolver.parseClasspathOutput("no markers here"))
   }
+
+  @Test
+  fun `invalidate clears cache`() {
+    GradleClasspathResolver.invalidate()
+    // smoke: does not throw
+    assertNull(GradleClasspathResolver.parseClasspathOutput(""))
+  }
 }

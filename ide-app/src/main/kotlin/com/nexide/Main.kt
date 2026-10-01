@@ -217,6 +217,7 @@ fun main() {
           if (problems.isEmpty()) NotificationService.success("Build OK")
           else NotificationService.warn("Build", "${problems.size} problem(s)")
           reindexProject()
+          com.nexide.platform.core.run.GradleClasspathResolver.invalidate(dir)
         }
       }
       processRunner.addListener(listener)
