@@ -183,6 +183,50 @@ fun main() {
     }
 
 
+    fun runTests() {
+      val dir = File(project.basePath)
+      if (!GradleRunSupport.isGradleProject(dir)) {
+        NotificationService.warn("Tests", "Not a Gradle project")
+        return
+      }
+      val gradle = GradleRunSupport.findGradleCommand(dir) ?: return
+      problems = emptyList()
+      building = true
+      problemsVisible = true
+      runPanelVisible = true
+      val buffer = StringBuilder()
+      val listener = object : ProcessOutputListener {
+        override fun onOutput(text: String) {
+          buffer.append(text)
+        }
+        override fun onFinished(exitCode: Int) {
+          processRunner.removeListener(this)
+          val parsed = ProblemParser.parseOutput(buffer.toString()).map { p ->
+            resolveProblemPath(dir, p)
+          }
+          problems = parsed
+          building = false
+          val fails = parsed.count { it.severity == ProblemSeverity.ERROR }
+          Logger.info("Tests finished ($exitCode): $fails failure location(s)")
+          if (exitCode == 0) NotificationService.success("Tests passed")
+          else NotificationService.warn("Tests", "$fails failure(s) — click Problems to navigate")
+        }
+      }
+      processRunner.addListener(listener)
+      processRunner.start(gradle + "test", dir)
+    }
+
+    fun resolveProblemPath(projectDir: File, p: Problem): Problem {
+      val path = p.filePath ?: return p
+      if (File(path).isAbsolute) return p
+      // simple name from stack trace → search under project
+      val name = File(path).name
+      val match = projectDir.walkTopDown()
+        .onEnter { it.name !in setOf(".git", ".gradle", "build", "out", "node_modules") }
+        .firstOrNull { it.isFile && it.name == name }
+      return if (match != null) p.copy(filePath = match.absolutePath) else p
+    }
+
     fun buildProject() {
       val dir = File(project.basePath)
       if (!GradleRunSupport.isGradleProject(dir)) {
@@ -204,14 +248,7 @@ fun main() {
           processRunner.removeListener(this)
           val parsed = ProblemParser.parseOutput(buffer.toString())
           // Resolve relative paths against project root
-          problems = parsed.map { p ->
-            val path = p.filePath
-            if (path != null && !File(path).isAbsolute) {
-              p.copy(filePath = File(dir, path).canonicalPath)
-            } else {
-              p
-            }
-          }
+          problems = parsed.map { p -> resolveProblemPath(dir, p) }
           building = false
           Logger.info("Build finished ($exitCode): ${problems.size} problem(s)")
           if (problems.isEmpty()) NotificationService.success("Build OK")
@@ -758,6 +795,7 @@ fun main() {
           },
           rename = { startRename() },
           build = { buildProject() },
+          runTests = { runTests() },
           showProblems = { problemsVisible = true },
           runSelected = {
             runConfigManager.selected?.let { runConfiguration(it, debug = false) }
@@ -843,6 +881,7 @@ fun main() {
             }
           },
           build = { buildProject() },
+          runTests = { runTests() },
           showProblems = { problemsVisible = true },
           runSelected = { runConfigManager.selected?.let { runConfiguration(it, false) } },
           debugSelected = { runConfigManager.selected?.let { runConfiguration(it, true) } },

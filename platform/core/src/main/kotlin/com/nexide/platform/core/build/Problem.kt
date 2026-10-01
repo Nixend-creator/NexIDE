@@ -130,6 +130,39 @@ object ProblemParser {
   }
 
   fun parseOutput(output: String): List<Problem> {
-    return output.lineSequence().mapNotNull { parseLine(it) }.toList()
+    val fromLines = output.lineSequence().mapNotNull { parseLine(it) }.toList()
+    val fromTests = parseTestFailures(output)
+    return (fromLines + fromTests).distinctBy {
+      "${it.filePath}:${it.line}:${it.message}"
+    }
+  }
+
+  /**
+   * Gradle/JUnit style failures + first stack frame with source file.
+   */
+  fun parseTestFailures(output: String): List<Problem> {
+    val problems = mutableListOf<Problem>()
+    val stackFrame = Regex("""^\s*at\s+[\w.$]+\(([\w.]+\.(?:kt|java)):(\d+)\)""")
+    val failedHeader = Regex("""(?i)([\w.]+)\s*>\s*([\w`]+)\s+FAILED""")
+    var currentTest: String? = null
+    for (line in output.lineSequence()) {
+      failedHeader.find(line)?.let { m ->
+        currentTest = "${m.groupValues[1]}.${m.groupValues[2]}"
+      }
+      val frame = stackFrame.find(line.trim())
+      if (frame != null) {
+        problems.add(
+          Problem(
+            severity = ProblemSeverity.ERROR,
+            message = currentTest?.let { "Test failed: $it" } ?: "Test failure",
+            filePath = frame.groupValues[1],
+            line = frame.groupValues[2].toIntOrNull(),
+            rawLine = line
+          )
+        )
+        currentTest = null
+      }
+    }
+    return problems
   }
 }
