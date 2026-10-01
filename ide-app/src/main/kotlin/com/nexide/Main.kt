@@ -401,6 +401,18 @@ fun main() {
       }
     }
 
+    fun reindexProject() {
+      val root = File(project.basePath)
+      Thread {
+        try {
+          SymbolIndex.refresh(root)
+          Logger.info("SymbolIndex refreshed")
+        } catch (e: Exception) {
+          Logger.warn("SymbolIndex refresh failed: ${e.message}")
+        }
+      }.start()
+    }
+
     fun saveActive() {
       val ok = activeEditor?.save() == true
       if (ok) reindexProject()
