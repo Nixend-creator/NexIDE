@@ -278,83 +278,54 @@ fun main() {
       )
     }
 
-    fun openFile(file: VirtualFile, line: Int? = null): Editor {
-      RecentFiles.add(file.path)
-      selectedFile = file
-      val existing = openEditors.firstOrNull { it.file.path == file.path }
-      val editor = if (existing != null) {
-        activeEditor = existing
-        existing
-      } else {
-        val created = Editor.create(file)
-        openEditors.add(created)
-        activeEditor = created
-        created
-      }
-      if (line != null && line > 0) {
-        pendingGoToLine = editor to line
-      }
-      return editor
-    }
+    fun openFile(file: VirtualFile, line: Int? = null): Editor =
+      IdeTabService.openFile(
+        openEditors = openEditors,
+        file = file,
+        line = line,
+        setActive = { activeEditor = it },
+        setSelectedFile = { selectedFile = it },
+        setPendingGoToLine = { pendingGoToLine = it }
+      )
 
     fun doCloseEditor(editor: Editor) {
-      val index = openEditors.indexOf(editor)
-      openEditors.remove(editor)
-      editor.dispose()
-      if (activeEditor === editor) {
-        activeEditor = when {
-          openEditors.isEmpty() -> null
-          index < openEditors.size -> openEditors[index]
-          else -> openEditors.lastOrNull()
-        }
-        selectedFile = activeEditor?.file
-      }
+      IdeTabService.doCloseEditor(
+        openEditors = openEditors,
+        editor = editor,
+        activeEditor = activeEditor,
+        setActive = { activeEditor = it },
+        setSelectedFile = { selectedFile = it }
+      )
     }
 
     fun requestCloseEditor(editor: Editor) {
-      if (editor.isModified) {
-        pendingCloseEditor = editor
-      } else {
-        doCloseEditor(editor)
-      }
+      IdeTabService.requestCloseEditor(
+        editor = editor,
+        setPendingClose = { pendingCloseEditor = it },
+        doClose = { doCloseEditor(it) }
+      )
     }
 
     fun closeOtherTabs() {
-      val keep = activeEditor ?: return
-      openEditors.toList().filter { it !== keep }.forEach { ed ->
-        if (ed.isModified) {
-          ed.save()
-          Logger.info("Saved before close: ${ed.file.name}")
-        }
-        doCloseEditor(ed)
-      }
+      IdeTabService.closeOtherTabs(openEditors, activeEditor) { doCloseEditor(it) }
     }
 
     fun closeAllEditors() {
-      openEditors.toList().forEach { ed ->
-        if (ed.file.path in pinnedPaths) return@forEach
-        if (ed.isModified) {
-          ed.save()
-          Logger.info("Saved before close: ${ed.file.name}")
-        }
-        doCloseEditor(ed)
-      }
+      IdeTabService.closeAllEditors(openEditors, pinnedPaths) { doCloseEditor(it) }
     }
 
     fun openProjectFromPath(path: String) {
-      closeAllEditors()
-      project = application.openProject(path)
-      selectedFile = null
-      activeEditor = null
-      RecentProjects.add(path)
-      runConfigManager.clear()
-      runConfigManager.ensureDefaults(File(path))
-      SymbolIndex.invalidate()
-      try { SymbolIndex.ensureIndexed(File(path)) } catch (_: Exception) {}
-      IdeStateStore.lastProjectPath = path
-      IdeStateStore.save()
-      NotificationService.info("Project opened", path)
-      Logger.info("Opened project: $path")
+      IdeTabService.openProjectFromPath(
+        path = path,
+        application = application,
+        runConfigManager = runConfigManager,
+        closeAll = { closeAllEditors() },
+        setProject = { project = it },
+        clearEditors = {
+          selectedFile = null
+          activeEditor = null
+        }
+      )
     }
 
     // Record the default project as recent on startup
@@ -376,20 +347,7 @@ fun main() {
     }
 
     fun chooseAndOpenProject() {
-      try {
-        UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName())
-      } catch (_: Exception) {
-        // ignore
-      }
-      val chooser = JFileChooser().apply {
-        fileSelectionMode = JFileChooser.DIRECTORIES_ONLY
-        dialogTitle = "Open Project"
-        currentDirectory = File(project.basePath)
-      }
-      val result = chooser.showOpenDialog(null)
-      if (result == JFileChooser.APPROVE_OPTION) {
-        openProjectFromPath(chooser.selectedFile.absolutePath)
-      }
+      IdeTabService.chooseAndOpenProject(project.basePath) { openProjectFromPath(it) }
     }
 
 
