@@ -195,16 +195,7 @@ fun main() {
 
 
     fun jumpToSource(info: SuspendedThreadInfo) {
-      val name = info.sourceName ?: return
-      val line = info.lineNumber ?: return
-      val root = File(project.basePath)
-      val match = root.walkTopDown()
-        .onEnter { d -> d.name !in setOf(".git", ".gradle", "build", "out", "node_modules") }
-        .firstOrNull { it.isFile && it.name == name }
-        ?: return
-      val file = LocalFileSystem.getInstance().findFileByPath(match.absolutePath) ?: return
-      openFile(file, line)
-      Logger.info("Debug jump: ${match.name}:$line")
+      IdeNavigationService.jumpToSource(info, project.basePath) { vf, line -> openFile(vf, line) }
     }
 
     fun autoAttachAndInstallBps() {
@@ -361,70 +352,24 @@ fun main() {
       }
     }
 
-    fun lineNumberAt(text: String, offset: Int): Int {
-      val o = offset.coerceIn(0, text.length)
-      return text.substring(0, o).count { it == '\n' } + 1
-    }
-
     fun toggleBookmark() {
-      val ed = activeEditor ?: return
-      val line = lineNumberAt(ed.document.getText(), ed.caretOffset)
-      val added = Bookmarks.toggle(ed.file.path, line)
-      bookmarksTick++
-      NotificationService.info(
-        "Bookmark",
-        if (added) "Added ${ed.file.name}:$line" else "Removed ${ed.file.name}:$line"
-      )
+      IdeNavigationService.toggleBookmark(activeEditor) { bookmarksTick++ }
     }
 
     fun goToNextBookmark() {
-      val ed = activeEditor
-      val line = if (ed != null) lineNumberAt(ed.document.getText(), ed.caretOffset) else 0
-      val next = Bookmarks.next(ed?.file?.path, line) ?: run {
-        NotificationService.warn("Bookmarks", "None")
-        return
-      }
-      val vf = LocalFileSystem.getInstance().findFileByPath(next.filePath)
-      if (vf != null) openFile(vf, next.line)
-    }
-
-    fun copyToClipboard(text: String, label: String) {
-      try {
-        Toolkit.getDefaultToolkit().systemClipboard.setContents(StringSelection(text), null)
-        NotificationService.info("Copied", label)
-      } catch (e: Exception) {
-        NotificationService.warn("Copy failed", e.message ?: "")
-      }
+      IdeNavigationService.goToNextBookmark(activeEditor) { vf, line -> openFile(vf, line) }
     }
 
     fun copyActivePath(kind: String) {
       val file = activeEditor?.file ?: selectedFile ?: return
-      val abs = file.path
-      val text = when (kind) {
-        "name" -> file.name
-        "relative" -> {
-          val root = project.basePath
-          if (abs.startsWith(root)) abs.removePrefix(root).trimStart('/', '\\') else abs
-        }
-        else -> abs
-      }
-      copyToClipboard(text, text)
+      val text = IdeNavigationService.pathText(kind, file.path, file.name, project.basePath)
+      IdeNavigationService.copyToClipboard(text, text)
     }
 
     fun revealInProjectView() {
       val file = activeEditor?.file ?: return
       selectedFile = file
-      val root = project.basePath
-      val ancestors = mutableSetOf<String>()
-      var f: java.io.File? = java.io.File(file.path).parentFile
-      val rootFile = java.io.File(root)
-      while (f != null) {
-        ancestors.add(f.absolutePath)
-        if (f.absolutePath == rootFile.absolutePath) break
-        f = f.parentFile
-      }
-      ancestors.add(root)
-      projectExpandPaths = ancestors
+      projectExpandPaths = IdeNavigationService.ancestorPaths(file.path, project.basePath)
       NotificationService.info("Project View", file.name)
     }
 
@@ -471,45 +416,24 @@ fun main() {
     }
 
     fun gotoDeclaration() {
-      val ed = activeEditor ?: return
-      val text = ed.document.getText()
-      val symbol = GotoDeclaration.symbolAt(text, ed.caretOffset)
-      if (symbol == null) {
-        Logger.info("Go to Declaration: no symbol under caret")
-        return
-      }
-      val targets = GotoDeclaration.findDeclarations(File(project.basePath), symbol)
-      when {
-        targets.isEmpty() -> Logger.info("No declaration found for '$symbol'")
-        targets.size == 1 -> navigateToTarget(targets.first())
-        else -> {
-          gotoDialogTitle = "Go to Declaration"
-          gotoTargets = symbol to targets
-        }
+      val multi = IdeNavigationService.gotoDeclaration(
+        activeEditor,
+        project.basePath
+      ) { navigateToTarget(it) }
+      if (multi != null) {
+        gotoDialogTitle = "Go to Declaration"
+        gotoTargets = multi
       }
     }
 
     fun findUsages() {
-      val ed = activeEditor ?: return
-      val text = ed.document.getText()
-      val symbol = GotoDeclaration.symbolAt(text, ed.caretOffset) ?: return
-      val targets = GotoDeclaration.findUsages(File(project.basePath), symbol)
-      if (targets.isEmpty()) {
-        Logger.info("No usages for '$symbol'")
-        return
-      }
+      val multi = IdeNavigationService.findUsages(activeEditor, project.basePath) ?: return
       gotoDialogTitle = "Find Usages"
-      gotoTargets = symbol to targets
+      gotoTargets = multi
     }
 
     fun startRename() {
-      val ed = activeEditor ?: return
-      val symbol = GotoDeclaration.symbolAt(ed.document.getText(), ed.caretOffset)
-      if (symbol == null) {
-        Logger.info("Rename: no symbol under caret")
-        return
-      }
-      renameSymbol = symbol
+      renameSymbol = IdeNavigationService.symbolForRename(activeEditor)
     }
 
     fun reloadOpenEditorsFromDisk() {
