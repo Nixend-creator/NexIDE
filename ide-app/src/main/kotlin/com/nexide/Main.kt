@@ -165,6 +165,7 @@ fun main() {
     var pendingGoToLine by mutableStateOf<Pair<Editor, Int>?>(null)
 
     val runConfigManager = remember { RunConfigurationManager.getInstance() }
+    val session = IdeSessionServices(processRunner, debugSessionManager, jdiConnector, runConfigManager)
     // Seed defaults for current project
     runConfigManager.ensureDefaults(File(project.basePath))
     // Restore tabs from last session
@@ -183,83 +184,7 @@ fun main() {
     }
 
 
-    fun runTests() {
-      val dir = File(project.basePath)
-      if (!GradleRunSupport.isGradleProject(dir)) {
-        NotificationService.warn("Tests", "Not a Gradle project")
-        return
-      }
-      val gradle = GradleRunSupport.findGradleCommand(dir) ?: return
-      problems = emptyList()
-      building = true
-      problemsVisible = true
-      runPanelVisible = true
-      val buffer = StringBuilder()
-      val listener = object : ProcessOutputListener {
-        override fun onOutput(text: String) {
-          buffer.append(text)
-        }
-        override fun onFinished(exitCode: Int) {
-          processRunner.removeListener(this)
-          val parsed = ProblemParser.parseOutput(buffer.toString()).map { p ->
-            resolveProblemPath(dir, p)
-          }
-          problems = parsed
-          building = false
-          val fails = parsed.count { it.severity == ProblemSeverity.ERROR }
-          Logger.info("Tests finished ($exitCode): $fails failure location(s)")
-          if (exitCode == 0) NotificationService.success("Tests passed")
-          else NotificationService.warn("Tests", "$fails failure(s) — click Problems to navigate")
-        }
-      }
-      processRunner.addListener(listener)
-      processRunner.start(gradle + "test", dir)
-    }
 
-    fun resolveProblemPath(projectDir: File, p: Problem): Problem {
-      val path = p.filePath ?: return p
-      if (File(path).isAbsolute) return p
-      // simple name from stack trace → search under project
-      val name = File(path).name
-      val match = projectDir.walkTopDown()
-        .onEnter { it.name !in setOf(".git", ".gradle", "build", "out", "node_modules") }
-        .firstOrNull { it.isFile && it.name == name }
-      return if (match != null) p.copy(filePath = match.absolutePath) else p
-    }
-
-    fun buildProject() {
-      val dir = File(project.basePath)
-      if (!GradleRunSupport.isGradleProject(dir)) {
-        Logger.warn("Not a Gradle project")
-        problemsVisible = true
-        return
-      }
-      val gradle = GradleRunSupport.findGradleCommand(dir) ?: return
-      problems = emptyList()
-      building = true
-      problemsVisible = true
-      val buffer = StringBuilder()
-      val listener = object : ProcessOutputListener {
-        override fun onOutput(text: String) {
-          buffer.append(text)
-        }
-
-        override fun onFinished(exitCode: Int) {
-          processRunner.removeListener(this)
-          val parsed = ProblemParser.parseOutput(buffer.toString())
-          // Resolve relative paths against project root
-          problems = parsed.map { p -> resolveProblemPath(dir, p) }
-          building = false
-          Logger.info("Build finished ($exitCode): ${problems.size} problem(s)")
-          if (problems.isEmpty()) NotificationService.success("Build OK")
-          else NotificationService.warn("Build", "${problems.size} problem(s)")
-          reindexProject()
-          com.nexide.platform.core.run.GradleClasspathResolver.invalidate(dir)
-        }
-      }
-      processRunner.addListener(listener)
-      processRunner.start(gradle + "build", dir)
-    }
 
 
     fun jumpToSource(info: SuspendedThreadInfo) {
@@ -303,30 +228,49 @@ fun main() {
       }
     }
 
-    fun runConfiguration(config: RunConfiguration, debug: Boolean = false) {
-      val dir = File(config.workingDir.ifBlank { project.basePath })
-      val command = runConfigManager.resolveCommand(
-        config.copy(workingDir = dir.absolutePath, debug = debug)
-      )
-      if (command == null) {
-        Logger.warn("Cannot resolve run configuration: ${config.name}")
-        return
-      }
-      if (debug) {
-        debugPanelVisible = true
-        val ok = debugSessionManager.startDebug(command, dir)
-        if (ok) autoAttachAndInstallBps()
-      } else {
-        runPanelVisible = true
-        processRunner.start(command, dir)
-      }
-      Logger.info("${if (debug) "Debug" else "Run"}: ${config.name} → ${command.joinToString(" ")}")
-    }
-
 
     /**
      * Opens [file] in a tab (or focuses existing) and optionally jumps to [line] (1-based).
      */
+
+        fun reindexProject() {
+      session.reindexProjectAsync(project.basePath)
+    }
+
+    fun reindexSavedFiles(files: List<File>) {
+      session.reindexFilesAsync(files)
+    }
+
+    fun buildProject() {
+      session.buildProject(
+        projectPath = project.basePath,
+        onBuilding = { building = it },
+        onProblems = { problems = it },
+        onShowProblems = { problemsVisible = true }
+      )
+    }
+
+    fun runTests() {
+      session.runTests(
+        projectPath = project.basePath,
+        onBuilding = { building = it },
+        onProblems = { problems = it },
+        onShowProblems = { problemsVisible = true },
+        onShowRun = { runPanelVisible = true }
+      )
+    }
+
+    fun runConfiguration(config: RunConfiguration, debug: Boolean = false) {
+      session.runConfiguration(
+        config = config,
+        projectPath = project.basePath,
+        debug = debug,
+        onShowRun = { runPanelVisible = true },
+        onShowDebug = { debugPanelVisible = true },
+        autoAttach = { autoAttachAndInstallBps() }
+      )
+    }
+
     fun openFile(file: VirtualFile, line: Int? = null): Editor {
       RecentFiles.add(file.path)
       selectedFile = file
@@ -441,29 +385,7 @@ fun main() {
       }
     }
 
-    fun reindexProject() {
-      val root = File(project.basePath)
-      Thread {
-        try {
-          SymbolIndex.refresh(root)
-          Logger.info("SymbolIndex refreshed")
-        } catch (e: Exception) {
-          Logger.warn("SymbolIndex refresh failed: ${e.message}")
-        }
-      }.start()
-    }
 
-    fun reindexSavedFiles(files: List<File>) {
-      if (files.isEmpty()) return
-      Thread {
-        try {
-          files.forEach { SymbolIndex.reindexFile(it) }
-          Logger.info("SymbolIndex reindexed ${files.size} file(s)")
-        } catch (e: Exception) {
-          Logger.warn("SymbolIndex reindexFile failed: ${e.message}")
-        }
-      }.start()
-    }
 
     fun saveActive() {
       val ed = activeEditor
@@ -805,9 +727,7 @@ fun main() {
           },
           editRunConfigs = { runConfigDialogVisible = true },
           stop = {
-            processRunner.stop()
-            debugSessionManager.stop()
-            jdiConnector.detach()
+            session.stopAll()
           },
           showBreakpoints = { breakpointsVisible = true },
           showDebug = { debugPanelVisible = true },
@@ -886,9 +806,7 @@ fun main() {
           runSelected = { runConfigManager.selected?.let { runConfiguration(it, false) } },
           debugSelected = { runConfigManager.selected?.let { runConfiguration(it, true) } },
           stop = {
-            processRunner.stop()
-            debugSessionManager.stop()
-            jdiConnector.detach()
+            session.stopAll()
           },
           showGit = { gitPanelVisible = true },
           showTerminal = { terminalVisible = true },
