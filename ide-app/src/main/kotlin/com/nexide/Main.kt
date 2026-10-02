@@ -58,6 +58,8 @@ import com.nexide.platform.core.Project
 import com.nexide.platform.core.Bookmarks
 import com.nexide.platform.core.RecentFiles
 import com.nexide.platform.core.RecentProjects
+import com.nexide.platform.core.build.DiagnosticsMerge
+import com.nexide.platform.core.build.LiveSyntaxChecker
 import com.nexide.platform.core.build.Problem
 import com.nexide.platform.core.build.ProblemParser
 import com.nexide.platform.core.navigation.GotoDeclaration
@@ -156,7 +158,8 @@ fun main() {
     var breakpointsVisible by mutableStateOf(false)
     var runConfigDialogVisible by mutableStateOf(false)
     var problemsVisible by mutableStateOf(false)
-    var problems by mutableStateOf<List<Problem>>(emptyList())
+    var buildProblems by mutableStateOf<List<Problem>>(emptyList())
+    var diagnosticsTick by mutableStateOf(0)
     var building by mutableStateOf(false)
     var gotoTargets by mutableStateOf<Pair<String, List<NavigationTarget>>?>(null)
     var gotoDialogTitle by mutableStateOf("Go to Declaration")
@@ -166,6 +169,18 @@ fun main() {
 
     val runConfigManager = remember { RunConfigurationManager.getInstance() }
     val session = IdeSessionServices(processRunner, debugSessionManager, jdiConnector, runConfigManager)
+
+    fun mergedProblems(): List<Problem> {
+      @Suppress("UNUSED_EXPRESSION")
+      diagnosticsTick
+      val revs = openEditors.sumOf { it.contentRevision }
+      @Suppress("UNUSED_EXPRESSION")
+      revs
+      val live = DiagnosticsMerge.liveForFiles(
+        openEditors.map { it.file.path to it.document.getText() }
+      )
+      return DiagnosticsMerge.merge(buildProblems, live)
+    }
     // Seed defaults for current project
     runConfigManager.ensureDefaults(File(project.basePath))
     // Restore tabs from last session
@@ -245,7 +260,7 @@ fun main() {
       session.buildProject(
         projectPath = project.basePath,
         onBuilding = { building = it },
-        onProblems = { problems = it },
+        onProblems = { buildProblems = it },
         onShowProblems = { problemsVisible = true }
       )
     }
@@ -254,7 +269,7 @@ fun main() {
       session.runTests(
         projectPath = project.basePath,
         onBuilding = { building = it },
-        onProblems = { problems = it },
+        onProblems = { buildProblems = it },
         onShowProblems = { problemsVisible = true },
         onShowRun = { runPanelVisible = true }
       )
@@ -390,7 +405,10 @@ fun main() {
     fun saveActive() {
       val ed = activeEditor
       val ok = ed?.save() == true
-      if (ok && ed != null) reindexSavedFiles(listOf(File(ed.file.path)))
+      if (ok && ed != null) {
+        reindexSavedFiles(listOf(File(ed.file.path)))
+        diagnosticsTick++
+      }
     }
 
     fun lineNumberAt(text: String, offset: Int): Int {
@@ -924,6 +942,12 @@ fun main() {
         )
       }
 
+      val problemsForUi = run {
+        // Recompose when any open document revision changes
+        openEditors.forEach { it.contentRevision }
+        diagnosticsTick
+        mergedProblems()
+      }
       NexIdeApp(
         state = IdeUiState(
           project = project,
@@ -934,7 +958,7 @@ fun main() {
           processRunner = processRunner,
           debugSessionManager = debugSessionManager,
           jdiConnector = jdiConnector,
-          problems = problems,
+          problems = problemsForUi,
           building = building,
           settingsRevision = settingsRevision,
           pendingGoToLine = pendingGoToLine,
@@ -1093,7 +1117,7 @@ fun NexIdeApp(
             splitEditor = splitEditor,
             projectPath = project.basePath,
             settingsRevision = settingsRevision,
-            problems = problems,
+            problems = problemsForUi,
             pendingGoToLine = pendingGoToLine,
             onPendingGoToLineHandled = onPendingGoToLineHandled,
             onSelectEditor = onSelectEditor,
@@ -1129,7 +1153,7 @@ fun NexIdeApp(
           processRunner = processRunner,
           debugSessionManager = debugSessionManager,
           jdiConnector = jdiConnector,
-          problems = problems,
+          problems = problemsForUi,
           building = building,
           findInFilesVisible = findInFilesVisible,
           problemsVisible = problemsVisible,
