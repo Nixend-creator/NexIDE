@@ -23,7 +23,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.nexide.platform.core.build.LiveSyntaxChecker
 import com.nexide.platform.core.build.Problem
 import com.nexide.platform.editor.Editor
 import com.nexide.platform.editor.ui.EditorView
@@ -51,20 +50,11 @@ fun IdeEditorArea(
   onTogglePin: (Editor) -> Unit = {},
   modifier: Modifier = Modifier
 ) {
-  fun problemLinesFor(ed: Editor): Set<Int> {
-    val fromBuild = problems
+  fun problemLinesFor(ed: Editor): Set<Int> =
+    problems
       .filter { it.filePath == ed.file.path && it.line != null }
       .mapNotNull { it.line }
       .toSet()
-    val live = try {
-      LiveSyntaxChecker.check(ed.file.path, ed.document.getText())
-        .mapNotNull { it.line }
-        .toSet()
-    } catch (_: Exception) {
-      emptySet()
-    }
-    return fromBuild + live
-  }
 
   Column(modifier = modifier.fillMaxHeight()) {
     EditorTabs(

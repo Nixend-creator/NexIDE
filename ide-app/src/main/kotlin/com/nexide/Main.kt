@@ -159,6 +159,7 @@ fun main() {
     var runConfigDialogVisible by mutableStateOf(false)
     var problemsVisible by mutableStateOf(false)
     var buildProblems by mutableStateOf<List<Problem>>(emptyList())
+    var liveProblems by mutableStateOf<List<Problem>>(emptyList())
     var diagnosticsTick by mutableStateOf(0)
     var building by mutableStateOf(false)
     var gotoTargets by mutableStateOf<Pair<String, List<NavigationTarget>>?>(null)
@@ -170,17 +171,8 @@ fun main() {
     val runConfigManager = remember { RunConfigurationManager.getInstance() }
     val session = IdeSessionServices(processRunner, debugSessionManager, jdiConnector, runConfigManager)
 
-    fun mergedProblems(): List<Problem> {
-      @Suppress("UNUSED_EXPRESSION")
-      diagnosticsTick
-      val revs = openEditors.sumOf { it.contentRevision }
-      @Suppress("UNUSED_EXPRESSION")
-      revs
-      val live = DiagnosticsMerge.liveForFiles(
-        openEditors.map { it.file.path to it.document.getText() }
-      )
-      return DiagnosticsMerge.merge(buildProblems, live)
-    }
+    fun mergedProblems(): List<Problem> =
+      DiagnosticsMerge.merge(buildProblems, liveProblems)
     // Seed defaults for current project
     runConfigManager.ensureDefaults(File(project.basePath))
     // Restore tabs from last session
@@ -572,6 +564,16 @@ fun main() {
       }
     }
 
+
+    // Debounced live diagnostics (300ms after edits settle)
+    val editorRevs = openEditors.sumOf { it.contentRevision } + openEditors.size
+    LaunchedEffect(editorRevs, diagnosticsTick) {
+      delay(300)
+      liveProblems = DiagnosticsMerge.liveForFiles(
+        openEditors.map { it.file.path to it.document.getText() }
+      )
+    }
+
     Window(
       onCloseRequest = {
         persistSession()
@@ -942,12 +944,7 @@ fun main() {
         )
       }
 
-      val problemsForUi = run {
-        // Recompose when any open document revision changes
-        openEditors.forEach { it.contentRevision }
-        diagnosticsTick
-        mergedProblems()
-      }
+      val problemsForUi = mergedProblems()
       NexIdeApp(
         state = IdeUiState(
           project = project,
