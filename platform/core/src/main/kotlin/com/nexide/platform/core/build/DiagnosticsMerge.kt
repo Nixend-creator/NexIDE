@@ -39,7 +39,7 @@ object DiagnosticsMerge {
   fun liveForFiles(files: List<Pair<String, String>>): List<Problem> {
     return files.flatMap { (path, text) ->
       try {
-        LiveSyntaxChecker.check(path, text)
+        LiveSyntaxChecker.check(path, text) + SimpleInspections.checkFile(path, text)
       } catch (_: Exception) {
         emptyList()
       }
