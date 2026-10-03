@@ -567,216 +567,7 @@ fun main() {
               if (searchEverywhereVisible) { searchEverywhereVisible = false; true } else false
             },
             dismissRecentFiles = {
-              if (recentFilesVisible) { recentFilesVisible = false; true } else false
-            },
-            dismissBookmarks = {
-              if (bookmarksVisible) { bookmarksVisible = false; true } else false
-            },
-            dismissMarketplace = {
-              if (marketplaceVisible) { marketplaceVisible = false; true } else false
-            },
-            dismissSettings = {
-              if (settingsVisible) { settingsVisible = false; true } else false
-            },
-            dismissRunConfig = {
-              if (runConfigDialogVisible) { runConfigDialogVisible = false; true } else false
-            },
-            dismissGoto = {
-              if (gotoTargets != null) { gotoTargets = null; true } else false
-            },
-            dismissRename = {
-              if (renameSymbol != null) { renameSymbol = null; true } else false
-            },
-            dismissIntention = {
-              if (intentionActions != null) { intentionActions = null; intentionEditor = null; true } else false
-            },
-            dismissLocalHistory = {
-              if (localHistoryVisible) { localHistoryVisible = false; true } else false
-            },
-            dismissFindInFiles = {
-              if (findInFilesVisible) { findInFilesVisible = false; true } else false
-            },
-            dismissProblems = {
-              if (problemsVisible) { problemsVisible = false; true } else false
-            },
-            dismissBreakpoints = {
-              if (breakpointsVisible) { breakpointsVisible = false; true } else false
-            },
-            dismissDebug = {
-              if (debugPanelVisible) { debugPanelVisible = false; true } else false
-            },
-            dismissRun = {
-              if (runPanelVisible) { runPanelVisible = false; true } else false
-            },
-            dismissGit = {
-              if (gitPanelVisible) { gitPanelVisible = false; true } else false
-            },
-            dismissTerminal = {
-              if (terminalVisible) { terminalVisible = false; true } else false
-            },
-            dismissStructure = {
-              if (structureVisible) { structureVisible = false; true } else false
-            }
-          ),
-          hasEditor = activeEditor != null,
-          hasRunConfig = runConfigManager.selected != null,
-          openProject = { chooseAndOpenProject() },
-          recentFiles = { recentFilesVisible = true },
-          findAction = { commandPaletteVisible = true },
-          searchEverywhere = { searchEverywhereVisible = true },
-          zoomIn = { zoomEditor(1) },
-          zoomOut = { zoomEditor(-1) },
-          zoomReset = { resetEditorZoom() },
-          toggleBookmark = { toggleBookmark() },
-          nextBookmark = { goToNextBookmark() },
-          showBookmarks = { bookmarksVisible = true },
-          save = { saveActive() },
-          saveAll = { saveAll() },
-          closeTab = { activeEditor?.let { requestCloseEditor(it) } },
-          closeAll = { closeAllEditors() },
-          findInFiles = { findInFilesVisible = true },
-          build = { buildProject() },
-          settings = { settingsVisible = true },
-          problems = { problemsVisible = true },
-          toggleBreakpoint = {
-            activeEditor?.let { ed ->
-              BreakpointManager.getInstance().toggle(ed.file.path, 1)
-              breakpointsVisible = true
-            }
-          },
-          run = { runConfigManager.selected?.let { runConfiguration(it, debug = false) } },
-          debug = { runConfigManager.selected?.let { runConfiguration(it, debug = true) } },
-          gotoDeclaration = { gotoDeclaration() },
-          findUsages = { findUsages() },
-          rename = { startRename() },
-          optimizeImports = { optimizeImportsActive() },
-          showIntention = { showIntention() },
-          nextProblem = { goToProblem(true) },
-          prevProblem = { goToProblem(false) }
-        )
-      }
-    ) {
-      IdeMenuBar(
-
-        hasEditor = activeEditor != null,
-        hasModified = openEditors.any { it.isModified },
-        tabCount = openEditors.size,
-        selectedRunName = runConfigManager.selected?.name,
-        softWrap = com.nexide.platform.core.settings.NexIdeSettings.softWrap,
-        darkTheme = darkTheme,
-        splitEditor = splitEditor,
-        currentProjectPath = project.basePath,
-        actions = IdeMenuActions(
-          openProject = { chooseAndOpenProject() },
-          openRecent = { openProjectFromPath(it) },
-          clearRecent = {
-            RecentProjects.list().forEach { RecentProjects.remove(it) }
-          },
-          save = { saveActive() },
-          saveAll = { saveAll() },
-          closeTab = { activeEditor?.let { requestCloseEditor(it) } },
-          closeOtherTabs = { closeOtherTabs() },
-          closeAllTabs = { closeAllEditors() },
-          openSettings = { settingsVisible = true },
-          exit = {
-            persistSession()
-            application.exit()
-            exitApplication()
-          },
-          gotoDeclaration = { gotoDeclaration() },
-          findUsages = { findUsages() },
-          recentFiles = { recentFilesVisible = true },
-          findAction = { commandPaletteVisible = true },
-          searchEverywhere = { searchEverywhereVisible = true },
-          copyAbsolutePath = { copyActivePath("absolute") },
-          copyRelativePath = { copyActivePath("relative") },
-          copyFileName = { copyActivePath("name") },
-          revealInProject = { revealInProjectView() },
-          toggleBookmark = { toggleBookmark() },
-          nextBookmark = { goToNextBookmark() },
-          showBookmarks = { bookmarksVisible = true },
-          optimizeImports = { optimizeImportsActive() },
-          reformat = {
-            val ed = activeEditor
-            if (ed != null) {
-              val indent = com.nexide.platform.core.settings.NexIdeSettings.tabSize
-              val formatted = com.nexide.platform.editor.format.CodeFormatter.format(
-                ed.document.getText(), indent
-              )
-              if (formatted != ed.document.getText()) {
-                ed.replaceText(formatted)
-              }
-            }
-          },
-          showLocalHistory = { localHistoryVisible = activeEditor != null },
-          restoreLocalHistory = {
-            val ed = activeEditor
-            if (ed != null) {
-              val content = com.nexide.platform.core.history.LocalHistory.contentAt(ed.file.path, 0)
-              if (content != null) {
-                ed.replaceText(content)
-                NotificationService.info("Local History", "Restored last snapshot")
-              } else {
-                NotificationService.warn("Local History", "No snapshots for this file")
-              }
-            }
-          },
-          rename = { startRename() },
-          build = { buildProject() },
-          runTests = { runTests() },
-          showProblems = { problemsVisible = true },
-          runSelected = {
-            runConfigManager.selected?.let { runConfiguration(it, debug = false) }
-          },
-          debugSelected = {
-            runConfigManager.selected?.let { runConfiguration(it, debug = true) }
-          },
-          editRunConfigs = { runConfigDialogVisible = true },
-          stop = {
-            session.stopAll()
-          },
-          showBreakpoints = { breakpointsVisible = true },
-          showDebug = { debugPanelVisible = true },
-          findInFiles = { findInFilesVisible = true },
-          showStructure = { structureVisible = true },
-          showGit = { gitPanelVisible = true },
-          showTerminal = { terminalVisible = true },
-          showRun = { runPanelVisible = true },
-          toggleSoftWrap = {
-            com.nexide.platform.core.settings.NexIdeSettings.softWrap =
-              !com.nexide.platform.core.settings.NexIdeSettings.softWrap
-            com.nexide.platform.core.settings.NexIdeSettings.save()
-            settingsRevision++
-          },
-          toggleDarkTheme = {
-            darkTheme = !darkTheme
-            IdeStateStore.darkTheme = darkTheme
-            IdeStateStore.save()
-          },
-          toggleSplit = {
-            splitEditor = !splitEditor
-            IdeStateStore.splitEditor = splitEditor
-            IdeStateStore.save()
-          },
-          openPlugins = { marketplaceVisible = true },
-          zoomIn = { zoomEditor(1) },
-          zoomOut = { zoomEditor(-1) },
-          zoomReset = { resetEditorZoom() }
-        )
-      )
-
-      if (recentFilesVisible) {
-        RecentFilesDialog(
-          paths = RecentFiles.list(),
-          onSelect = { path ->
-            recentFilesVisible = false
-            val vf = LocalFileSystem.getInstance().findFileByPath(path)
-            if (vf != null && !vf.isDirectory) openFile(vf)
-          },
-          onDismiss = { recentFilesVisible = false }
-        )
-      }
-      if (commandPaletteVisible) {
+              val paletteActions = if (commandPaletteVisible) {
         val actionState = IdeActionState(
           hasEditor = activeEditor != null,
           hasModified = openEditors.any { it.isModified },
@@ -812,9 +603,7 @@ fun main() {
           showProblems = { problemsVisible = true },
           runSelected = { runConfigManager.selected?.let { runConfiguration(it, false) } },
           debugSelected = { runConfigManager.selected?.let { runConfiguration(it, true) } },
-          stop = {
-            session.stopAll()
-          },
+          stop = { session.stopAll() },
           showGit = { gitPanelVisible = true },
           showTerminal = { terminalVisible = true },
           showStructure = { structureVisible = true },
@@ -852,124 +641,62 @@ fun main() {
           nextProblem = { goToProblem(true) },
           prevProblem = { goToProblem(false) }
         )
-        CommandPalette(
-          actions = IdeActionCatalog.paletteActions(actionState, handlers),
-          onDismiss = { commandPaletteVisible = false }
-        )
+        IdeActionCatalog.paletteActions(actionState, handlers)
+      } else {
+        emptyList()
       }
-      if (bookmarksVisible) {
-        @Suppress("UNUSED_EXPRESSION")
-        bookmarksTick
-        BookmarksDialog(
-          bookmarks = Bookmarks.list(),
-          onNavigate = { bm ->
-            bookmarksVisible = false
-            val vf = LocalFileSystem.getInstance().findFileByPath(bm.filePath)
-            if (vf != null) openFile(vf, bm.line)
-          },
-          onRemove = { bm ->
-            Bookmarks.remove(bm.filePath, bm.line)
-            bookmarksTick++
-          },
-          onClear = {
-            Bookmarks.clear()
-            bookmarksTick++
-          },
-          onDismiss = { bookmarksVisible = false }
-        )
-      }
-      if (searchEverywhereVisible) {
-        SearchEverywhereDialog(
-          projectRoot = File(project.basePath),
-          onOpenFile = { path, line ->
-            searchEverywhereVisible = false
-            val vf = LocalFileSystem.getInstance().findFileByPath(path)
-            if (vf != null && !vf.isDirectory) openFile(vf, line)
-          },
-          onDismiss = { searchEverywhereVisible = false }
-        )
-      }
-      if (marketplaceVisible) {
-        MarketplaceDialog(onDismiss = { marketplaceVisible = false })
-      }
-      if (settingsVisible) {
-        SettingsDialog(
-          onDismiss = { settingsVisible = false },
-          onApplied = { settingsRevision++ }
-        )
-      }
-      if (runConfigDialogVisible) {
-        RunConfigDialog(
-          projectPath = project.basePath,
-          manager = runConfigManager,
-          onDismiss = { runConfigDialogVisible = false },
-          onRun = { cfg ->
-            runConfigDialogVisible = false
-            runConfiguration(cfg, debug = false)
-          },
-          onDebug = { cfg ->
-            runConfigDialogVisible = false
-            runConfiguration(cfg, debug = true)
-          }
-        )
-      }
-      gotoTargets?.let { (symbol, targets) ->
-        GotoTargetsDialog(
-          symbol = symbol,
-          targets = targets,
-          title = gotoDialogTitle,
-          onSelect = { navigateToTarget(it) },
-          onDismiss = { gotoTargets = null }
-        )
-      }
-      if (localHistoryVisible) {
-        val ed = activeEditor
-        LocalHistoryDialog(
-          fileName = ed?.file?.name ?: "",
-          entries = ed?.let { LocalHistory.entries(it.file.path) } ?: emptyList(),
-          onRestore = { index ->
-            if (ed != null) {
-              val content = LocalHistory.contentAt(ed.file.path, index)
-              if (content != null) {
-                snapshotBeforeEdit(ed, "before history restore")
-                ed.replaceText(content)
-                NotificationService.info("Local History", "Restored snapshot #$index")
-              }
-            }
-            localHistoryVisible = false
-          },
-          onDismiss = { localHistoryVisible = false }
-        )
-      }
-      intentionActions?.let { actions ->
-        IntentionDialog(
-          titles = actions.map { it.title },
-          onSelect = { applyIntentionAt(it) },
-          onDismiss = { intentionActions = null; intentionEditor = null }
-        )
-      }
-      renameSymbol?.let { symbol ->
-        RenameDialog(
-          projectRoot = File(project.basePath),
-          oldName = symbol,
-          onBeforeApply = {
-            openEditors.forEach { ed ->
-              snapshotBeforeEdit(ed, "before rename")
-            }
-          },
-          onApplied = { files, newName ->
-            Logger.info("Renamed '$symbol' → '$newName' in $files file(s)")
-            NotificationService.success(
-              "Rename",
-              "'$symbol' → '$newName' ($files file(s))"
-            )
-            reloadOpenEditorsFromDisk()
-            reindexProject()
-            diagnosticsTick++
-          },
-          onDismiss = { renameSymbol = null }
-        )
-      }
+
+      IdeDialogHost(
+        projectPath = project.basePath,
+        activeEditor = activeEditor,
+        openEditors = openEditors,
+        recentFilesVisible = recentFilesVisible,
+        onRecentFilesVisible = { recentFilesVisible = it },
+        commandPaletteVisible = commandPaletteVisible,
+        onCommandPaletteVisible = { commandPaletteVisible = it },
+        paletteActions = paletteActions,
+        bookmarksVisible = bookmarksVisible,
+        bookmarksTick = bookmarksTick,
+        onBookmarksVisible = { bookmarksVisible = it },
+        onBookmarksTick = { bookmarksTick++ },
+        searchEverywhereVisible = searchEverywhereVisible,
+        onSearchEverywhereVisible = { searchEverywhereVisible = it },
+        marketplaceVisible = marketplaceVisible,
+        onMarketplaceVisible = { marketplaceVisible = it },
+        settingsVisible = settingsVisible,
+        onSettingsVisible = { settingsVisible = it },
+        onSettingsApplied = { settingsRevision++ },
+        runConfigDialogVisible = runConfigDialogVisible,
+        onRunConfigDialogVisible = { runConfigDialogVisible = it },
+        runConfigManager = runConfigManager,
+        onRunConfig = { cfg, debug -> runConfiguration(cfg, debug) },
+        gotoTargets = gotoTargets,
+        gotoDialogTitle = gotoDialogTitle,
+        onGotoDismiss = { gotoTargets = null },
+        onNavigateTarget = { navigateToTarget(it) },
+        localHistoryVisible = localHistoryVisible,
+        onLocalHistoryVisible = { localHistoryVisible = it },
+        onSnapshotBeforeEdit = { ed, label -> snapshotBeforeEdit(ed, label) },
+        intentionActions = intentionActions,
+        onIntentionSelect = { applyIntentionAt(it) },
+        onIntentionDismiss = { intentionActions = null; intentionEditor = null },
+        renameSymbol = renameSymbol,
+        onRenameDismiss = { renameSymbol = null },
+        onRenameApplied = { files, newName ->
+          val symbol = renameSymbol
+          NotificationService.success(
+            "Rename",
+            "'$symbol' → '$newName' ($files file(s))"
+          )
+          reloadOpenEditorsFromDisk()
+          reindexProject()
+          diagnosticsTick++
+        },
+        onOpenFile = { path, line ->
+          val vf = LocalFileSystem.getInstance().findFileByPath(path)
+          if (vf != null && !vf.isDirectory) openFile(vf, line)
+        }
+      )
 
       val problemsForUi = mergedProblems()
       NexIdeApp(
