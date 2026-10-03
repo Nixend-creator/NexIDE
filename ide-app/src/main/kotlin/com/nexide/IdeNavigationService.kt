@@ -18,6 +18,7 @@ package com.nexide
 
 import com.nexide.platform.core.Bookmarks
 import com.nexide.platform.core.build.Problem
+import com.nexide.platform.core.build.ProblemNavigation
 import com.nexide.platform.core.debug.SuspendedThreadInfo
 import com.nexide.platform.core.navigation.GotoDeclaration
 import com.nexide.platform.core.navigation.NavigationTarget
@@ -174,39 +175,11 @@ object IdeNavigationService {
     }
     return symbol
   }
-}
 
-  /**
-   * Next/previous diagnostic relative to caret line in the same file, then other files.
-   * @param forward true = next (F2), false = previous (Shift+F2)
-   */
   fun stepProblem(
     problems: List<Problem>,
     currentFile: String?,
     currentLine: Int,
     forward: Boolean
-  ): Problem? {
-    val sorted = problems
-      .filter { it.filePath != null && it.line != null }
-      .sortedWith(
-        compareBy<Problem> { it.filePath ?: "" }
-          .thenBy { it.line ?: 0 }
-      )
-    if (sorted.isEmpty()) return null
-    if (currentFile == null) return if (forward) sorted.first() else sorted.last()
-
-    return if (forward) {
-      sorted.firstOrNull { p ->
-        val fp = p.filePath!!
-        val ln = p.line!!
-        fp > currentFile || (fp == currentFile && ln > currentLine)
-      } ?: sorted.first()
-    } else {
-      sorted.lastOrNull { p ->
-        val fp = p.filePath!!
-        val ln = p.line!!
-        fp < currentFile || (fp == currentFile && ln < currentLine)
-      } ?: sorted.last()
-    }
-  }
+  ): Problem? = ProblemNavigation.step(problems, currentFile, currentLine, forward)
 }
