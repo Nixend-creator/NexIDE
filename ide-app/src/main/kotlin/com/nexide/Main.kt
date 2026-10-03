@@ -605,6 +605,7 @@ fun main() {
           },
           build = { buildProject() },
           runTests = { runTests() },
+          reloadGradle = { reloadGradleProject() },
           showProblems = { problemsVisible = true },
           runSelected = { runConfigManager.selected?.let { runConfiguration(it, false) } },
           debugSelected = { runConfigManager.selected?.let { runConfiguration(it, true) } },
@@ -644,7 +645,8 @@ fun main() {
           showBookmarks = { bookmarksVisible = true },
           showLocalHistory = { localHistoryVisible = activeEditor != null },
           nextProblem = { goToProblem(true) },
-          prevProblem = { goToProblem(false) }
+          prevProblem = { goToProblem(false) },
+          reloadGradle = { reloadGradleProject() }
         )
         IdeActionCatalog.paletteActions(actionState, handlers)
       } else {

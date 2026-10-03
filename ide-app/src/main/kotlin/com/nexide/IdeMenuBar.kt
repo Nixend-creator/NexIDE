@@ -54,6 +54,7 @@ data class IdeMenuActions(
   val rename: () -> Unit,
   val build: () -> Unit,
   val runTests: () -> Unit,
+  val reloadGradle: () -> Unit,
   val showProblems: () -> Unit,
   val runSelected: () -> Unit,
   val debugSelected: () -> Unit,
@@ -140,6 +141,7 @@ fun FrameWindowScope.IdeMenuBar(
     Menu("Build", mnemonic = 'B') {
       Item("Build Project", onClick = actions.build)
       Item("Run Tests", onClick = actions.runTests)
+      Item("Reload Gradle Project", onClick = actions.reloadGradle)
       Item("Show Problems", onClick = actions.showProblems)
     }
     Menu("Run", mnemonic = 'R') {

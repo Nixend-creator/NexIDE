@@ -74,7 +74,8 @@ class IdeActionHandlers(
   val showBookmarks: () -> Unit,
   val showLocalHistory: () -> Unit,
   val nextProblem: () -> Unit,
-  val prevProblem: () -> Unit
+  val prevProblem: () -> Unit,
+  val reloadGradle: () -> Unit
 )
 
 /**
@@ -134,7 +135,8 @@ object IdeActionCatalog {
       action("bookmark.list", "Show Bookmarks", "Ctrl+F11", run = h.showBookmarks),
       action("local.history", "Show Local History…", enabled = state.hasEditor, run = h.showLocalHistory),
       action("problem.next", "Next Problem", "F2", run = h.nextProblem),
-      action("problem.prev", "Previous Problem", "Shift+F2", run = h.prevProblem)
+      action("problem.prev", "Previous Problem", "Shift+F2", run = h.prevProblem),
+      action("gradle.reload", "Reload Gradle Project", run = h.reloadGradle)
     )
   }
 }
