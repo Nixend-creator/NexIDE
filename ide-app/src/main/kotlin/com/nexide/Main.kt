@@ -437,6 +437,30 @@ fun main() {
       gotoTargets = multi
     }
 
+    fun goToProblem(forward: Boolean) {
+      val ed = activeEditor
+      val line = if (ed != null) {
+        IdeNavigationService.lineNumberAt(ed.document.getText(), ed.caretOffset)
+      } else 0
+      val p = IdeNavigationService.stepProblem(
+        mergedProblems(),
+        ed?.file?.path,
+        line,
+        forward
+      ) ?: run {
+        NotificationService.info("Problems", "No problems")
+        return
+      }
+      val path = p.filePath ?: return
+      val vf = LocalFileSystem.getInstance().findFileByPath(path) ?: return
+      openFile(vf, p.line)
+      problemsVisible = true
+      NotificationService.info(
+        "Problem",
+        "${p.severity}: ${p.message.take(80)}"
+      )
+    }
+
     fun showIntention() {
       val ed = activeEditor ?: return
       val text = ed.document.getText()
@@ -612,7 +636,9 @@ fun main() {
           findUsages = { findUsages() },
           rename = { startRename() },
           optimizeImports = { optimizeImportsActive() },
-          showIntention = { showIntention() }
+          showIntention = { showIntention() },
+          nextProblem = { goToProblem(true) },
+          prevProblem = { goToProblem(false) }
         )
       }
     ) {

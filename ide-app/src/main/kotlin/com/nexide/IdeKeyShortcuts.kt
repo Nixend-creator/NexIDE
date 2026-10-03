@@ -32,4 +32,6 @@ object IdeKeyShortcuts {
   const val SETTINGS = "Ctrl+Alt+S"
   const val OPTIMIZE_IMPORTS = "Ctrl+Alt+O"
   const val INTENTION = "Alt+Enter"
+  const val NEXT_PROBLEM = "F2"
+  const val PREV_PROBLEM = "Shift+F2"
 }

@@ -759,6 +759,10 @@ fun EditorView(
           append("  |  ")
           append("git:$it")
         }
+        if (problemLines.isNotEmpty()) {
+          append("  |  ")
+          append("${problemLines.size} problem(s)")
+        }
         statusMessage?.let {
           append("  |  ")
           append(it)

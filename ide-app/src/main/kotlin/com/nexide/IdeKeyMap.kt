@@ -105,7 +105,9 @@ object IdeKeyMap {
     findUsages: () -> Unit,
     rename: () -> Unit,
     optimizeImports: () -> Unit,
-    showIntention: () -> Unit
+    showIntention: () -> Unit,
+    nextProblem: () -> Unit,
+    prevProblem: () -> Unit
   ): Boolean {
     if (event.type != KeyEventType.KeyDown) return false
     val ctrlOrMeta = event.isCtrlPressed || event.isMetaPressed
@@ -195,6 +197,13 @@ object IdeKeyMap {
       event.isAltPressed && (event.key == Key.Enter || event.key == Key.NumPadEnter) &&
         !ctrlOrMeta -> {
         showIntention(); true
+      }
+      // F2 / Shift+F2 — next / previous problem
+      event.key == Key.F2 && !shift && !ctrlOrMeta && !event.isAltPressed -> {
+        nextProblem(); true
+      }
+      event.key == Key.F2 && shift && !ctrlOrMeta -> {
+        prevProblem(); true
       }
       else -> false
     }
