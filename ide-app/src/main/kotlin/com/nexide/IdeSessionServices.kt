@@ -85,7 +85,8 @@ class IdeSessionServices(
     projectPath: String,
     onBuilding: (Boolean) -> Unit,
     onProblems: (List<Problem>) -> Unit,
-    onShowProblems: () -> Unit
+    onShowProblems: () -> Unit,
+    gradleTask: String = "build"
   ) {
     val dir = File(projectPath)
     if (!GradleRunSupport.isGradleProject(dir)) {
@@ -98,6 +99,7 @@ class IdeSessionServices(
     onBuilding(true)
     onShowProblems()
     val buffer = StringBuilder()
+    val taskLabel = gradleTask
     val listener = object : ProcessOutputListener {
       override fun onOutput(text: String) {
         buffer.append(text)
@@ -108,15 +110,15 @@ class IdeSessionServices(
         val parsed = ProblemParser.parseOutput(buffer.toString()).map { resolveProblemPath(dir, it) }
         onProblems(parsed)
         onBuilding(false)
-        Logger.info("Build finished ($exitCode): ${parsed.size} problem(s)")
-        if (parsed.isEmpty()) NotificationService.success("Build OK")
-        else NotificationService.warn("Build", "${parsed.size} problem(s)")
+        Logger.info("Build finished ($taskLabel, $exitCode): ${parsed.size} problem(s)")
+        if (parsed.isEmpty()) NotificationService.success("Build OK ($taskLabel)")
+        else NotificationService.warn("Build", "${parsed.size} problem(s) — $taskLabel")
         reindexProjectAsync(projectPath)
         GradleClasspathResolver.invalidate(dir)
       }
     }
     processRunner.addListener(listener)
-    processRunner.start(gradle + "build", dir)
+    processRunner.start(gradle + taskLabel.split(" ").filter { it.isNotBlank() }, dir)
   }
 
   fun runTests(

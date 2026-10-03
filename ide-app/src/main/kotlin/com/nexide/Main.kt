@@ -250,14 +250,31 @@ fun main() {
       session.reindexFilesAsync(files)
     }
 
-    fun buildProject() {
+    fun buildProject(gradleTask: String = "build") {
       session.buildProject(
         projectPath = project.basePath,
         onBuilding = { building = it },
         onProblems = { buildProblems = it },
-        onShowProblems = { problemsVisible = true }
+        onShowProblems = { problemsVisible = true },
+        gradleTask = gradleTask
       )
     }
+
+    fun moduleGradleTask(suffix: String): String {
+      val ed = activeEditor
+      val mod = ed?.let { gradleModel?.moduleForFile(File(it.file.path)) }
+      return when {
+        mod == null || mod.path == ":" -> suffix
+        else -> "${mod.path}:$suffix"
+      }
+    }
+
+    fun buildModule() {
+      val task = moduleGradleTask("build")
+      NotificationService.info("Build", task)
+      buildProject(task)
+    }
+
 
     fun runTests(gradleTask: String = "test") {
       session.runTests(
@@ -271,12 +288,7 @@ fun main() {
     }
 
     fun runModuleTests() {
-      val ed = activeEditor
-      val mod = ed?.let { gradleModel?.moduleForFile(File(it.file.path)) }
-      val task = when {
-        mod == null || mod.path == ":" -> "test"
-        else -> "${mod.path}:test"
-      }
+      val task = moduleGradleTask("test")
       NotificationService.info("Tests", task)
       runTests(task)
     }
@@ -629,8 +641,10 @@ fun main() {
             }
           },
           build = { buildProject() },
+          buildModule = { buildModule() },
           runTests = { runTests() },
           runModuleTests = { runModuleTests() },
+          buildModule = { buildModule() },
           reloadGradle = { reloadGradleProject() },
           showProblems = { problemsVisible = true },
           runSelected = { runConfigManager.selected?.let { runConfiguration(it, false) } },

@@ -53,6 +53,7 @@ data class IdeMenuActions(
   val showLocalHistory: () -> Unit,
   val rename: () -> Unit,
   val build: () -> Unit,
+  val buildModule: () -> Unit,
   val runTests: () -> Unit,
   val runModuleTests: () -> Unit,
   val reloadGradle: () -> Unit,
@@ -141,6 +142,7 @@ fun FrameWindowScope.IdeMenuBar(
     }
     Menu("Build", mnemonic = 'B') {
       Item("Build Project", onClick = actions.build)
+      Item("Build Module", onClick = actions.buildModule)
       Item("Run Tests", onClick = actions.runTests)
       Item("Run Module Tests", onClick = actions.runModuleTests)
       Item("Reload Gradle Project", onClick = actions.reloadGradle)
