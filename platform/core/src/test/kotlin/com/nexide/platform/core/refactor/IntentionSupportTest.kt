@@ -27,4 +27,35 @@ class IntentionSupportTest {
     assertTrue(applied.first.contains("Used"))
     assertEquals("Remove unused import", applied.second)
   }
+
+  @Test
+  fun `inserts import after package`() {
+    val text = """
+      package demo
+      fun f(x: Bar) {}
+    """.trimIndent()
+    val next = IntentionSupport.insertImport(text, "other.Bar", true)
+    assertTrue(next.contains("import other.Bar"))
+    assertTrue(next.indexOf("import") > next.indexOf("package"))
+  }
+
+  @Test
+  fun `add import intention from missing import problem`() {
+    val text = """
+      package demo
+      fun f(x: Bar) {}
+    """.trimIndent()
+    val problems = listOf(
+      Problem(
+        ProblemSeverity.WARNING,
+        "Missing import for 'Bar' (other.Bar)",
+        "/x.kt",
+        2
+      )
+    )
+    val actions = IntentionSupport.actionsForLine(text, 2, problems)
+    assertTrue(actions.any { it.title.contains("Import") })
+    val next = actions.first { it.title.contains("Import") }.apply(text)
+    assertTrue(next.contains("import other.Bar"))
+  }
 }

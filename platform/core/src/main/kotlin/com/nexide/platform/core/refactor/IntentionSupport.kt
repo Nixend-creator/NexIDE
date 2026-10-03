@@ -47,6 +47,18 @@ object IntentionSupport {
         }
       )
     }
+    lineProblems.forEach { p ->
+      val m = Regex("""Missing import for '([^']+)' \(([^)]+)\)""").find(p.message)
+      if (m != null) {
+        val simple = m.groupValues[1]
+        val fq = m.groupValues[2]
+        actions.add(
+          IntentionAction("Import '$simple'") { src ->
+            insertImport(src, fq, src.trimStart().startsWith("package") || "package " in src.take(200))
+          }
+        )
+      }
+    }
     if (lineProblems.any { it.message.contains("Unclosed") || it.message.contains("Unmatched") }) {
       // informational only — no auto-fix for braces yet
     }
@@ -65,6 +77,43 @@ object IntentionSupport {
     val next = action.apply(text)
     if (next == text) return null
     return next to action.title
+  }
+
+  internal fun insertImport(text: String, fqName: String, isKotlin: Boolean): String {
+    val importLine = if (text.contains(";") && text.lines().any { it.trim().startsWith("import ") && it.contains(";") }) {
+      "import $fqName;"
+    } else {
+      "import $fqName"
+    }
+    if (text.lineSequence().any { it.trim() == importLine.trim() || it.trim() == "import $fqName" || it.trim() == "import $fqName;" }) {
+      return text
+    }
+    val lines = text.lines().toMutableList()
+    // after package and existing imports
+    var insertAt = 0
+    var seenPackage = false
+    var lastImport = -1
+    lines.forEachIndexed { i, line ->
+      val t = line.trim()
+      if (t.startsWith("package ")) {
+        seenPackage = true
+        insertAt = i + 1
+      }
+      if (t.startsWith("import ")) {
+        lastImport = i
+        insertAt = i + 1
+      }
+    }
+    if (lastImport < 0 && seenPackage && insertAt < lines.size && lines[insertAt].isNotBlank()) {
+      lines.add(insertAt, "")
+      insertAt++
+    }
+    lines.add(insertAt, importLine)
+    if (insertAt + 1 < lines.size && lines[insertAt + 1].isNotBlank() && lastImport < 0) {
+      lines.add(insertAt + 1, "")
+    }
+    val joined = lines.joinToString("\n")
+    return if (text.endsWith("\n") && !joined.endsWith("\n")) joined + "\n" else joined
   }
 
   internal fun removeLine(text: String, line1Based: Int): String {

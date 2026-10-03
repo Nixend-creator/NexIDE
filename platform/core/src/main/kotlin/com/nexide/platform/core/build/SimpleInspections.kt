@@ -96,9 +96,14 @@ object SimpleInspections {
       """\b(?:class|interface|object|enum\s+class|data\s+class|sealed\s+class|typealias)\s+([A-Z][A-Za-z0-9_]*)"""
     ).findAll(text).map { it.groupValues[1] }.toSet()
 
+    val imported = mutableSetOf<String>()
+    text.lineSequence().forEach { line ->
+      parseImport(line)?.let { (simple, _) -> imported.add(simple) }
+    }
+
     val typeLike = Regex("""\b([A-Z][A-Za-z0-9_]{2,})\b""")
     val problems = mutableListOf<Problem>()
-    val seen = mutableSetOf<String>()
+    val reported = mutableSetOf<String>()
 
     text.lines().forEachIndexed { idx, line ->
       val trimmed = line.trim()
@@ -109,23 +114,19 @@ object SimpleInspections {
       }
       typeLike.findAll(line).forEach { m ->
         val name = m.groupValues[1]
-        if (name in KEYWORDS || name in localDecls) return@forEach
-        if (name.startsWith("ERROR") || name.endsWith("Exception") && name.length < 12) {
-          // still check index
-        }
-        // Skip ALL_CAPS constants
+        if (name in KEYWORDS || name in localDecls || name in imported) return@forEach
         if (name.all { it.isUpperCase() || it.isDigit() || it == '_' }) return@forEach
-        if (SymbolIndex.exact(name).isNotEmpty()) return@forEach
-        val key = "$name:${idx + 1}"
-        if (key in seen) return@forEach
-        seen.add(key)
-        // Only report first occurrence of each unresolved name
-        if (seen.count { it.startsWith("$name:") } > 1) return@forEach
-        if (problems.any { it.message.contains("'$name'") }) return@forEach
+        val hits = SymbolIndex.exact(name).filter {
+          it.kind in setOf("class", "interface", "object", "symbol")
+        }
+        if (hits.isEmpty()) return@forEach
+        if (name in reported) return@forEach
+        reported.add(name)
+        val fq = hits.first().fqName
         problems.add(
           Problem(
             severity = ProblemSeverity.WARNING,
-            message = "Unresolved symbol '$name' (index)",
+            message = "Missing import for '$name' ($fq)",
             filePath = filePath,
             line = idx + 1,
             rawLine = line

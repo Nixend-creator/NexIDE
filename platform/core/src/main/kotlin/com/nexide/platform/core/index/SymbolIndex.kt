@@ -11,8 +11,12 @@ data class SymbolInfo(
   val name: String,
   val filePath: String,
   val line: Int,
-  val kind: String // class, fun, val, etc.
-)
+  val kind: String, // class, fun, val, etc.
+  val packageName: String? = null
+) {
+  val fqName: String
+    get() = if (!packageName.isNullOrBlank()) "$packageName.$name" else name
+}
 
 /**
  * Lightweight project symbol index for completion and resolve.
@@ -73,7 +77,11 @@ object SymbolIndex {
     try {
       if (file.length() >= 1_000_000) return
       val abs = file.absolutePath
-      file.readLines(Charsets.UTF_8).forEachIndexed { idx, line ->
+      val lines = file.readLines(Charsets.UTF_8)
+      val pkg = lines.firstNotNullOfOrNull {
+        Regex("""^\s*package\s+([\w.]+)""").find(it)?.groupValues?.get(1)
+      }
+      lines.forEachIndexed { idx, line ->
         DECL.findAll(line).forEach { m ->
           val name = m.groupValues[1]
           val kind = when {
@@ -85,7 +93,7 @@ object SymbolIndex {
             else -> "symbol"
           }
           byName.getOrPut(name) { mutableListOf() }.add(
-            SymbolInfo(name, abs, idx + 1, kind)
+            SymbolInfo(name, abs, idx + 1, kind, pkg)
           )
         }
       }
