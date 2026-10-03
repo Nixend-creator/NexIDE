@@ -99,7 +99,8 @@ fun EditorView(
   /** Bump to re-read settings (font size, line numbers). */
   settingsRevision: Int = 0,
   /** 1-based lines with build errors */
-  problemLines: Set<Int> = emptySet()
+  problemLines: Set<Int> = emptySet(),
+  moduleLabel: String? = null
 ) {
   var textFieldValue by remember(editor) {
     mutableStateOf(TextFieldValue(editor.document.getText()))
@@ -762,6 +763,10 @@ fun EditorView(
         if (problemLines.isNotEmpty()) {
           append("  |  ")
           append("${problemLines.size} problem(s)")
+        }
+        moduleLabel?.let {
+          append("  |  ")
+          append(it)
         }
         statusMessage?.let {
           append("  |  ")

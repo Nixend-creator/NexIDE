@@ -54,6 +54,8 @@ import com.nexide.platform.core.state.IdeStateStore
 import com.nexide.platform.core.index.SymbolIndex
 import com.nexide.platform.core.notify.NotificationService
 import com.nexide.platform.core.history.LocalHistory
+import com.nexide.platform.core.gradle.GradleProjectModel
+import com.nexide.platform.core.gradle.GradleProjectModelLoader
 import com.nexide.platform.ui.history.LocalHistoryDialog
 import com.nexide.platform.core.Project
 import com.nexide.platform.core.Bookmarks
@@ -133,6 +135,7 @@ fun main() {
     }
 
     var project by mutableStateOf(application.openProject(defaultPath))
+    var gradleModel by mutableStateOf(GradleProjectModelLoader.load(File(defaultPath)))
     val openEditors = mutableStateListOf<Editor>()
     var darkTheme by mutableStateOf(IdeStateStore.darkTheme)
     var splitEditor by mutableStateOf(IdeStateStore.splitEditor)
@@ -324,6 +327,8 @@ fun main() {
           activeEditor = null
         }
       )
+      gradleModel = GradleProjectModelLoader.load(File(path))
+      Logger.info("Gradle modules: ${gradleModel?.modules?.size ?: 0}")
     }
 
     // Record the default project as recent on startup
@@ -724,7 +729,8 @@ fun main() {
           structureVisible = structureVisible,
           findInFilesVisible = findInFilesVisible,
           projectExpandPaths = projectExpandPaths,
-          pinnedPaths = pinnedPaths
+          pinnedPaths = pinnedPaths,
+          moduleForPath = { path -> gradleModel?.moduleForFile(File(path))?.path }
         ),
         callbacks = IdeUiCallbacks(
           onRunPanelVisibleChange = { runPanelVisible = it },
@@ -869,6 +875,7 @@ fun NexIdeApp(
             projectPath = project.basePath,
             settingsRevision = settingsRevision,
             problems = problemsForUi,
+            moduleForPath = state.moduleForPath,
             pendingGoToLine = pendingGoToLine,
             onPendingGoToLineHandled = onPendingGoToLineHandled,
             onSelectEditor = onSelectEditor,

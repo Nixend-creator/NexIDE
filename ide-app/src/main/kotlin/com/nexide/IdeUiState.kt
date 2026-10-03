@@ -53,7 +53,8 @@ data class IdeUiState(
   val structureVisible: Boolean = false,
   val findInFilesVisible: Boolean = false,
   val projectExpandPaths: Set<String> = emptySet(),
-  val pinnedPaths: Set<String> = emptySet()
+  val pinnedPaths: Set<String> = emptySet(),
+  val moduleForPath: (String) -> String? = { null }
 )
 
 /**
