@@ -80,7 +80,10 @@ import com.nexide.platform.ui.dialog.ConfirmCloseDialog
 import com.nexide.platform.plugin.filetype.FileTypeRegistry
 import com.nexide.platform.ui.projectview.ProjectView
 import com.nexide.platform.ui.navigation.GotoTargetsDialog
+import com.nexide.platform.ui.refactor.IntentionDialog
 import com.nexide.platform.ui.refactor.RenameDialog
+import com.nexide.platform.core.refactor.IntentionAction
+import com.nexide.platform.core.refactor.IntentionSupport
 import com.nexide.platform.ui.run.RunConfigDialog
 import com.nexide.platform.ui.search.SearchHit
 import com.nexide.platform.ui.structure.StructureToolWindow
@@ -165,6 +168,8 @@ fun main() {
     var gotoTargets by mutableStateOf<Pair<String, List<NavigationTarget>>?>(null)
     var gotoDialogTitle by mutableStateOf("Go to Declaration")
     var renameSymbol by mutableStateOf<String?>(null)
+    var intentionActions by mutableStateOf<List<IntentionAction>?>(null)
+    var intentionEditor by mutableStateOf<com.nexide.platform.editor.Editor?>(null)
     // When opening a search hit, request go-to-line after editor opens
     var pendingGoToLine by mutableStateOf<Pair<Editor, Int>?>(null)
 
@@ -437,18 +442,37 @@ fun main() {
       val text = ed.document.getText()
       val line = IdeNavigationService.lineNumberAt(text, ed.caretOffset)
       val fileProblems = mergedProblems().filter { it.filePath == ed.file.path }
-      val applied = com.nexide.platform.core.refactor.IntentionSupport.applyFirst(
-        text, line, fileProblems
-      ) ?: run {
-        com.nexide.platform.core.notify.NotificationService.info(
-          "Intentions",
-          "No quick-fix on this line"
-        )
+      val actions = IntentionSupport.actionsForLine(text, line, fileProblems)
+      if (actions.isEmpty()) {
+        NotificationService.info("Intentions", "No quick-fix on this line")
         return
       }
-      ed.replaceText(applied.first)
-      diagnosticsTick++
-      com.nexide.platform.core.notify.NotificationService.info("Intention", applied.second)
+      if (actions.size == 1) {
+        val next = actions[0].apply(text)
+        if (next != text) {
+          ed.replaceText(next)
+          diagnosticsTick++
+          NotificationService.info("Intention", actions[0].title)
+        }
+        return
+      }
+      intentionEditor = ed
+      intentionActions = actions
+    }
+
+    fun applyIntentionAt(index: Int) {
+      val ed = intentionEditor ?: activeEditor
+      val actions = intentionActions
+      intentionActions = null
+      intentionEditor = null
+      if (ed == null || actions == null || index !in actions.indices) return
+      val text = ed.document.getText()
+      val next = actions[index].apply(text)
+      if (next != text) {
+        ed.replaceText(next)
+        diagnosticsTick++
+        NotificationService.info("Intention", actions[index].title)
+      }
     }
 
     fun optimizeImportsActive() {
@@ -527,6 +551,9 @@ fun main() {
             },
             dismissRename = {
               if (renameSymbol != null) { renameSymbol = null; true } else false
+            },
+            dismissIntention = {
+              if (intentionActions != null) { intentionActions = null; intentionEditor = null; true } else false
             },
             dismissFindInFiles = {
               if (findInFilesVisible) { findInFilesVisible = false; true } else false
@@ -849,6 +876,13 @@ fun main() {
           title = gotoDialogTitle,
           onSelect = { navigateToTarget(it) },
           onDismiss = { gotoTargets = null }
+        )
+      }
+      intentionActions?.let { actions ->
+        IntentionDialog(
+          titles = actions.map { it.title },
+          onSelect = { applyIntentionAt(it) },
+          onDismiss = { intentionActions = null; intentionEditor = null }
         )
       }
       renameSymbol?.let { symbol ->

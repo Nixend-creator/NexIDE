@@ -39,6 +39,7 @@ class IdeEscapeStack(
   val dismissRunConfig: () -> Boolean,
   val dismissGoto: () -> Boolean,
   val dismissRename: () -> Boolean,
+  val dismissIntention: () -> Boolean,
   val dismissFindInFiles: () -> Boolean,
   val dismissProblems: () -> Boolean,
   val dismissBreakpoints: () -> Boolean,
@@ -58,6 +59,7 @@ class IdeEscapeStack(
       dismissRunConfig() ||
       dismissGoto() ||
       dismissRename() ||
+      dismissIntention() ||
       dismissFindInFiles() ||
       dismissProblems() ||
       dismissBreakpoints() ||
