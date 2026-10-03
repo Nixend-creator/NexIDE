@@ -432,6 +432,20 @@ fun main() {
       gotoTargets = multi
     }
 
+    fun optimizeImportsActive() {
+      val ed = activeEditor ?: return
+      val result = com.nexide.platform.core.refactor.ImportOptimizer.optimize(ed.document.getText())
+      if (result.text != ed.document.getText()) {
+        ed.replaceText(result.text)
+        com.nexide.platform.core.notify.NotificationService.info(
+          "Optimize Imports",
+          if (result.removed > 0) "Removed ${result.removed} import(s)" else "Sorted imports"
+        )
+      } else {
+        com.nexide.platform.core.notify.NotificationService.info("Optimize Imports", "Nothing to change")
+      }
+    }
+
     fun startRename() {
       renameSymbol = IdeNavigationService.symbolForRename(activeEditor)
     }
@@ -550,7 +564,8 @@ fun main() {
           debug = { runConfigManager.selected?.let { runConfiguration(it, debug = true) } },
           gotoDeclaration = { gotoDeclaration() },
           findUsages = { findUsages() },
-          rename = { startRename() }
+          rename = { startRename() },
+          optimizeImports = { optimizeImportsActive() }
         )
       }
     ) {
@@ -593,6 +608,7 @@ fun main() {
           toggleBookmark = { toggleBookmark() },
           nextBookmark = { goToNextBookmark() },
           showBookmarks = { bookmarksVisible = true },
+          optimizeImports = { optimizeImportsActive() },
           reformat = {
             val ed = activeEditor
             if (ed != null) {
@@ -692,6 +708,7 @@ fun main() {
           gotoDeclaration = { gotoDeclaration() },
           findUsages = { findUsages() },
           rename = { startRename() },
+          optimizeImports = { optimizeImportsActive() },
           reformat = {
             val ed = activeEditor
             if (ed != null) {

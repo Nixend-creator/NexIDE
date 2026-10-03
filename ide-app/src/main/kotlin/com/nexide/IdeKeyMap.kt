@@ -101,7 +101,8 @@ object IdeKeyMap {
     debug: () -> Unit,
     gotoDeclaration: () -> Unit,
     findUsages: () -> Unit,
-    rename: () -> Unit
+    rename: () -> Unit,
+    optimizeImports: () -> Unit
   ): Boolean {
     if (event.type != KeyEventType.KeyDown) return false
     val ctrlOrMeta = event.isCtrlPressed || event.isMetaPressed
@@ -182,6 +183,10 @@ object IdeKeyMap {
       }
       event.isShiftPressed && event.key == Key.F6 -> {
         rename(); true
+      }
+      // Ctrl+Alt+O — Optimize Imports
+      ctrlOrMeta && event.isAltPressed && event.key == Key.O -> {
+        optimizeImports(); true
       }
       else -> false
     }
