@@ -102,7 +102,8 @@ object IdeKeyMap {
     gotoDeclaration: () -> Unit,
     findUsages: () -> Unit,
     rename: () -> Unit,
-    optimizeImports: () -> Unit
+    optimizeImports: () -> Unit,
+    showIntention: () -> Unit
   ): Boolean {
     if (event.type != KeyEventType.KeyDown) return false
     val ctrlOrMeta = event.isCtrlPressed || event.isMetaPressed
@@ -187,6 +188,11 @@ object IdeKeyMap {
       // Ctrl+Alt+O — Optimize Imports
       ctrlOrMeta && event.isAltPressed && event.key == Key.O -> {
         optimizeImports(); true
+      }
+      // Alt+Enter — Intention / quick-fix
+      event.isAltPressed && (event.key == Key.Enter || event.key == Key.NumPadEnter) &&
+        !ctrlOrMeta -> {
+        showIntention(); true
       }
       else -> false
     }

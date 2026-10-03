@@ -432,6 +432,25 @@ fun main() {
       gotoTargets = multi
     }
 
+    fun showIntention() {
+      val ed = activeEditor ?: return
+      val text = ed.document.getText()
+      val line = IdeNavigationService.lineNumberAt(text, ed.caretOffset)
+      val fileProblems = mergedProblems().filter { it.filePath == ed.file.path }
+      val applied = com.nexide.platform.core.refactor.IntentionSupport.applyFirst(
+        text, line, fileProblems
+      ) ?: run {
+        com.nexide.platform.core.notify.NotificationService.info(
+          "Intentions",
+          "No quick-fix on this line"
+        )
+        return
+      }
+      ed.replaceText(applied.first)
+      diagnosticsTick++
+      com.nexide.platform.core.notify.NotificationService.info("Intention", applied.second)
+    }
+
     fun optimizeImportsActive() {
       val ed = activeEditor ?: return
       val result = com.nexide.platform.core.refactor.ImportOptimizer.optimize(ed.document.getText())
@@ -565,7 +584,8 @@ fun main() {
           gotoDeclaration = { gotoDeclaration() },
           findUsages = { findUsages() },
           rename = { startRename() },
-          optimizeImports = { optimizeImportsActive() }
+          optimizeImports = { optimizeImportsActive() },
+          showIntention = { showIntention() }
         )
       }
     ) {

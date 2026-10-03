@@ -30,4 +30,6 @@ object IdeKeyShortcuts {
   const val ZOOM_OUT = "Ctrl+-"
   const val ZOOM_RESET = "Ctrl+0"
   const val SETTINGS = "Ctrl+Alt+S"
+  const val OPTIMIZE_IMPORTS = "Ctrl+Alt+O"
+  const val INTENTION = "Alt+Enter"
 }
