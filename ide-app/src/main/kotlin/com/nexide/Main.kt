@@ -952,9 +952,20 @@ fun main() {
         RenameDialog(
           projectRoot = File(project.basePath),
           oldName = symbol,
+          onBeforeApply = {
+            openEditors.forEach { ed ->
+              snapshotBeforeEdit(ed, "before rename")
+            }
+          },
           onApplied = { files, newName ->
             Logger.info("Renamed '$symbol' → '$newName' in $files file(s)")
+            NotificationService.success(
+              "Rename",
+              "'$symbol' → '$newName' ($files file(s))"
+            )
             reloadOpenEditorsFromDisk()
+            reindexProject()
+            diagnosticsTick++
           },
           onDismiss = { renameSymbol = null }
         )

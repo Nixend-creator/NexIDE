@@ -54,6 +54,7 @@ import java.io.File
 fun RenameDialog(
   projectRoot: File,
   oldName: String,
+  onBeforeApply: () -> Unit = {},
   onApplied: (filesChanged: Int, newName: String) -> Unit,
   onDismiss: () -> Unit
 ) {
@@ -158,6 +159,7 @@ fun RenameDialog(
         TextButton(onClick = onDismiss) { Text("Cancel") }
         TextButton(
           onClick = {
+            onBeforeApply()
             val p = RenameRefactoring.preview(projectRoot, oldName, newName)
             val n = RenameRefactoring.apply(p)
             onApplied(n, newName)

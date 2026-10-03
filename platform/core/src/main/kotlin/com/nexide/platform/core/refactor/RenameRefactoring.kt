@@ -65,6 +65,9 @@ object RenameRefactoring {
       }
       lines.forEachIndexed { index, line ->
         word.findAll(line).forEach { m ->
+          val before = line.substring(0, m.range.first)
+          // Skip matches that look like line comments
+          if (before.contains("//")) return@forEach
           list.add(
             RenameOccurrence(
               filePath = file.absolutePath,
