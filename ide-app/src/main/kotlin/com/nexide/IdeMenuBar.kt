@@ -50,6 +50,7 @@ data class IdeMenuActions(
   val reformat: () -> Unit,
   val optimizeImports: () -> Unit,
   val restoreLocalHistory: () -> Unit,
+  val showLocalHistory: () -> Unit,
   val rename: () -> Unit,
   val build: () -> Unit,
   val runTests: () -> Unit,
@@ -131,6 +132,7 @@ fun FrameWindowScope.IdeMenuBar(
       Item("Reformat Code", enabled = hasEditor, onClick = actions.reformat)
       Item("Optimize Imports", enabled = hasEditor, onClick = actions.optimizeImports)
       Item("Restore Last Local History", enabled = hasEditor, onClick = actions.restoreLocalHistory)
+      Item("Show Local History…", enabled = hasEditor, onClick = actions.showLocalHistory)
     }
     Menu("Refactor", mnemonic = 'T') {
       Item("Rename…", enabled = hasEditor, onClick = actions.rename)

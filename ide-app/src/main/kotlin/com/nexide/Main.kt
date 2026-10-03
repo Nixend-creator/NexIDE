@@ -54,6 +54,7 @@ import com.nexide.platform.core.state.IdeStateStore
 import com.nexide.platform.core.index.SymbolIndex
 import com.nexide.platform.core.notify.NotificationService
 import com.nexide.platform.core.history.LocalHistory
+import com.nexide.platform.ui.history.LocalHistoryDialog
 import com.nexide.platform.core.Project
 import com.nexide.platform.core.Bookmarks
 import com.nexide.platform.core.RecentFiles
@@ -170,6 +171,7 @@ fun main() {
     var renameSymbol by mutableStateOf<String?>(null)
     var intentionActions by mutableStateOf<List<IntentionAction>?>(null)
     var intentionEditor by mutableStateOf<com.nexide.platform.editor.Editor?>(null)
+    var localHistoryVisible by mutableStateOf(false)
     // When opening a search hit, request go-to-line after editor opens
     var pendingGoToLine by mutableStateOf<Pair<Editor, Int>?>(null)
 
@@ -579,6 +581,9 @@ fun main() {
             dismissIntention = {
               if (intentionActions != null) { intentionActions = null; intentionEditor = null; true } else false
             },
+            dismissLocalHistory = {
+              if (localHistoryVisible) { localHistoryVisible = false; true } else false
+            },
             dismissFindInFiles = {
               if (findInFilesVisible) { findInFilesVisible = false; true } else false
             },
@@ -694,6 +699,7 @@ fun main() {
               }
             }
           },
+          showLocalHistory = { localHistoryVisible = activeEditor != null },
           restoreLocalHistory = {
             val ed = activeEditor
             if (ed != null) {
@@ -902,6 +908,24 @@ fun main() {
           title = gotoDialogTitle,
           onSelect = { navigateToTarget(it) },
           onDismiss = { gotoTargets = null }
+        )
+      }
+      if (localHistoryVisible) {
+        val ed = activeEditor
+        LocalHistoryDialog(
+          fileName = ed?.file?.name ?: "",
+          entries = ed?.let { LocalHistory.entries(it.file.path) } ?: emptyList(),
+          onRestore = { index ->
+            if (ed != null) {
+              val content = LocalHistory.contentAt(ed.file.path, index)
+              if (content != null) {
+                ed.replaceText(content)
+                NotificationService.info("Local History", "Restored snapshot #$index")
+              }
+            }
+            localHistoryVisible = false
+          },
+          onDismiss = { localHistoryVisible = false }
         )
       }
       intentionActions?.let { actions ->

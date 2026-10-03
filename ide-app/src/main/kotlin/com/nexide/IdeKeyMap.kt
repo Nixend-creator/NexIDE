@@ -40,6 +40,7 @@ class IdeEscapeStack(
   val dismissGoto: () -> Boolean,
   val dismissRename: () -> Boolean,
   val dismissIntention: () -> Boolean,
+  val dismissLocalHistory: () -> Boolean,
   val dismissFindInFiles: () -> Boolean,
   val dismissProblems: () -> Boolean,
   val dismissBreakpoints: () -> Boolean,
@@ -60,6 +61,7 @@ class IdeEscapeStack(
       dismissGoto() ||
       dismissRename() ||
       dismissIntention() ||
+      dismissLocalHistory() ||
       dismissFindInFiles() ||
       dismissProblems() ||
       dismissBreakpoints() ||
