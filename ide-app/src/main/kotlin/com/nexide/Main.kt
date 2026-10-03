@@ -730,7 +730,8 @@ fun main() {
           findInFilesVisible = findInFilesVisible,
           projectExpandPaths = projectExpandPaths,
           pinnedPaths = pinnedPaths,
-          moduleForPath = { path -> gradleModel?.moduleForFile(File(path))?.path }
+          moduleForPath = { path -> gradleModel?.moduleForFile(File(path))?.path },
+          gradleModules = gradleModel?.modules?.map { it.path } ?: emptyList()
         ),
         callbacks = IdeUiCallbacks(
           onRunPanelVisibleChange = { runPanelVisible = it },
@@ -767,6 +768,11 @@ fun main() {
             selectedFile = it.file
           },
           onRequestClose = { editor -> requestCloseEditor(editor) },
+          onRevealModule = { absPath ->
+            val ancestors = IdeNavigationService.ancestorPaths(absPath, project.basePath)
+            projectExpandPaths = ancestors + absPath
+            NotificationService.info("Module", File(absPath).name)
+          },
           onTogglePin = { ed ->
             pinnedPaths = if (ed.file.path in pinnedPaths) pinnedPaths - ed.file.path
             else pinnedPaths + ed.file.path
@@ -900,6 +906,13 @@ fun NexIdeApp(
                 if (editor != null) {
                   onNavigateToLine(editor, line)
                 }
+              },
+              modules = state.gradleModules,
+              onModuleClick = { modPath ->
+                // Expand module root in Project View via relative dir under project
+                val rel = modPath.trimStart(':').replace(':', '/')
+                val abs = File(project.basePath, rel).absolutePath
+                callbacks.onRevealModule(abs)
               }
             )
           }

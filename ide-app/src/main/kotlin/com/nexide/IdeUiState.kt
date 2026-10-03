@@ -54,7 +54,8 @@ data class IdeUiState(
   val findInFilesVisible: Boolean = false,
   val projectExpandPaths: Set<String> = emptySet(),
   val pinnedPaths: Set<String> = emptySet(),
-  val moduleForPath: (String) -> String? = { null }
+  val moduleForPath: (String) -> String? = { null },
+  val gradleModules: List<String> = emptyList()
 )
 
 /**
@@ -81,5 +82,6 @@ data class IdeUiCallbacks(
   val onSelectEditor: (Editor) -> Unit = {},
   val onRequestClose: (Editor) -> Unit = {},
   val onCloseConfirm: (Editor, CloseConfirmResult) -> Unit = { _, _ -> },
-  val onTogglePin: (Editor) -> Unit = {}
+  val onTogglePin: (Editor) -> Unit = {},
+  val onRevealModule: (String) -> Unit = {}
 )

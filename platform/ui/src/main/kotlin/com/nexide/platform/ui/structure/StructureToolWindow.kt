@@ -53,6 +53,8 @@ fun StructureToolWindow(
   visible: Boolean,
   onClose: () -> Unit,
   onNavigate: (line: Int) -> Unit,
+  modules: List<String> = emptyList(),
+  onModuleClick: (String) -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   if (!visible) return
@@ -103,6 +105,40 @@ fun StructureToolWindow(
         modifier = Modifier.padding(12.dp)
       )
       return
+    }
+
+    if (modules.isNotEmpty()) {
+      Text(
+        text = "Modules (${modules.size})",
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.primary,
+        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+      )
+      LazyColumn(
+        modifier = Modifier
+          .fillMaxWidth()
+          .weight(0.35f)
+          .background(MaterialTheme.colorScheme.surface)
+      ) {
+        items(modules) { mod ->
+          Text(
+            text = mod,
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+              .fillMaxWidth()
+              .clickable { onModuleClick(mod) }
+              .padding(horizontal = 10.dp, vertical = 3.dp)
+          )
+        }
+      }
+      Text(
+        text = fileName?.let { "File: $it" } ?: "File structure",
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+      )
     }
 
     LazyColumn(modifier = Modifier.fillMaxSize()) {
