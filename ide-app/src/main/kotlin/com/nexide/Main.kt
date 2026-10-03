@@ -56,6 +56,7 @@ import com.nexide.platform.core.notify.NotificationService
 import com.nexide.platform.core.history.LocalHistory
 import com.nexide.platform.core.gradle.GradleProjectModel
 import com.nexide.platform.core.gradle.GradleProjectModelLoader
+import com.nexide.platform.core.run.GradleClasspathResolver
 import com.nexide.platform.ui.history.LocalHistoryDialog
 import com.nexide.platform.core.Project
 import com.nexide.platform.core.Bookmarks
@@ -313,6 +314,18 @@ fun main() {
 
     fun closeAllEditors() {
       IdeTabService.closeAllEditors(openEditors, pinnedPaths) { doCloseEditor(it) }
+    }
+
+    fun reloadGradleProject() {
+      val dir = File(project.basePath)
+      gradleModel = GradleProjectModelLoader.load(dir)
+      GradleClasspathResolver.invalidate(dir)
+      reindexProject()
+      runConfigManager.clear()
+      runConfigManager.ensureDefaults(dir)
+      val n = gradleModel?.modules?.size ?: 0
+      Logger.info("Gradle project reloaded: $n module(s)")
+      NotificationService.success("Gradle", "Reloaded — $n module(s)")
     }
 
     fun openProjectFromPath(path: String) {
