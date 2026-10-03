@@ -486,6 +486,13 @@ fun main() {
       intentionActions = actions
     }
 
+    fun snapshotBeforeEdit(ed: com.nexide.platform.editor.Editor, label: String) {
+      try {
+        LocalHistory.record(ed.file.path, ed.document.getText(), label)
+      } catch (_: Exception) {
+      }
+    }
+
     fun applyIntentionAt(index: Int) {
       val ed = intentionEditor ?: activeEditor
       val actions = intentionActions
@@ -495,6 +502,7 @@ fun main() {
       val text = ed.document.getText()
       val next = actions[index].apply(text)
       if (next != text) {
+        snapshotBeforeEdit(ed, "before intention")
         ed.replaceText(next)
         diagnosticsTick++
         NotificationService.info("Intention", actions[index].title)
@@ -505,6 +513,7 @@ fun main() {
       val ed = activeEditor ?: return
       val result = com.nexide.platform.core.refactor.ImportOptimizer.optimize(ed.document.getText())
       if (result.text != ed.document.getText()) {
+        snapshotBeforeEdit(ed, "before optimize imports")
         ed.replaceText(result.text)
         com.nexide.platform.core.notify.NotificationService.info(
           "Optimize Imports",
@@ -838,7 +847,10 @@ fun main() {
           revealInProject = { revealInProjectView() },
           toggleBookmark = { toggleBookmark() },
           nextBookmark = { goToNextBookmark() },
-          showBookmarks = { bookmarksVisible = true }
+          showBookmarks = { bookmarksVisible = true },
+          showLocalHistory = { localHistoryVisible = activeEditor != null },
+          nextProblem = { goToProblem(true) },
+          prevProblem = { goToProblem(false) }
         )
         CommandPalette(
           actions = IdeActionCatalog.paletteActions(actionState, handlers),
@@ -919,6 +931,7 @@ fun main() {
             if (ed != null) {
               val content = LocalHistory.contentAt(ed.file.path, index)
               if (content != null) {
+                snapshotBeforeEdit(ed, "before history restore")
                 ed.replaceText(content)
                 NotificationService.info("Local History", "Restored snapshot #$index")
               }

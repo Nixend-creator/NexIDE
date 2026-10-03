@@ -71,7 +71,10 @@ class IdeActionHandlers(
   val revealInProject: () -> Unit,
   val toggleBookmark: () -> Unit,
   val nextBookmark: () -> Unit,
-  val showBookmarks: () -> Unit
+  val showBookmarks: () -> Unit,
+  val showLocalHistory: () -> Unit,
+  val nextProblem: () -> Unit,
+  val prevProblem: () -> Unit
 )
 
 /**
@@ -128,7 +131,10 @@ object IdeActionCatalog {
       action("reveal.project", "Reveal in Project View", enabled = state.hasEditor, run = h.revealInProject),
       action("bookmark.toggle", "Toggle Bookmark", "F11", state.hasEditor, h.toggleBookmark),
       action("bookmark.next", "Next Bookmark", "Shift+F11", run = h.nextBookmark),
-      action("bookmark.list", "Show Bookmarks", "Ctrl+F11", run = h.showBookmarks)
+      action("bookmark.list", "Show Bookmarks", "Ctrl+F11", run = h.showBookmarks),
+      action("local.history", "Show Local History…", enabled = state.hasEditor, run = h.showLocalHistory),
+      action("problem.next", "Next Problem", "F2", run = h.nextProblem),
+      action("problem.prev", "Previous Problem", "Shift+F2", run = h.prevProblem)
     )
   }
 }
