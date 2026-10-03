@@ -31,6 +31,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -57,6 +61,14 @@ fun ProblemsToolWindow(
 
   val errors = problems.count { it.severity == ProblemSeverity.ERROR }
   val warnings = problems.count { it.severity == ProblemSeverity.WARNING }
+  var filter by remember { mutableStateOf(ProblemFilter.ALL) }
+  val filtered = when (filter) {
+    ProblemFilter.ALL -> problems
+    ProblemFilter.ERRORS -> problems.filter { it.severity == ProblemSeverity.ERROR }
+    ProblemFilter.WARNINGS -> problems.filter {
+      it.severity == ProblemSeverity.WARNING || it.severity == ProblemSeverity.INFO
+    }
+  }
 
   Column(
     modifier = modifier
@@ -87,27 +99,61 @@ fun ProblemsToolWindow(
         Text("×", style = MaterialTheme.typography.labelLarge)
       }
     }
+    Row(
+      modifier = Modifier
+        .fillMaxWidth()
+        .padding(horizontal = 8.dp, vertical = 0.dp),
+      verticalAlignment = Alignment.CenterVertically
+    ) {
+      FilterChip("All (${problems.size})", filter == ProblemFilter.ALL) {
+        filter = ProblemFilter.ALL
+      }
+      FilterChip("Errors ($errors)", filter == ProblemFilter.ERRORS) {
+        filter = ProblemFilter.ERRORS
+      }
+      FilterChip("Warnings ($warnings)", filter == ProblemFilter.WARNINGS) {
+        filter = ProblemFilter.WARNINGS
+      }
+    }
 
     LazyColumn(
       modifier = Modifier
         .fillMaxSize()
         .background(MaterialTheme.colorScheme.surface)
     ) {
-      if (!building && problems.isEmpty()) {
+      if (!building && filtered.isEmpty()) {
         item {
           Text(
-            text = "No problems. Click Build to compile the project.",
+            text = if (problems.isEmpty()) {
+              "No problems. Click Build to compile the project."
+            } else {
+              "No problems in this filter."
+            },
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.padding(12.dp)
           )
         }
       }
-      itemsIndexed(problems, key = { index, p -> "$index:${p.filePath}:${p.line}:${p.message}" }) { _, problem ->
+      itemsIndexed(filtered, key = { index, p -> "$index:${p.filePath}:${p.line}:${p.message}" }) { _, problem ->
         ProblemRow(problem = problem, onClick = { onNavigate(problem) })
       }
     }
   }
+}
+
+private enum class ProblemFilter { ALL, ERRORS, WARNINGS }
+
+@Composable
+private fun FilterChip(label: String, selected: Boolean, onClick: () -> Unit) {
+  Text(
+    text = label,
+    style = MaterialTheme.typography.labelSmall,
+    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+    modifier = Modifier
+      .clickable(onClick = onClick)
+      .padding(horizontal = 8.dp, vertical = 4.dp)
+  )
 }
 
 @Composable
