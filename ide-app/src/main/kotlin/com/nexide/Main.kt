@@ -259,14 +259,26 @@ fun main() {
       )
     }
 
-    fun runTests() {
+    fun runTests(gradleTask: String = "test") {
       session.runTests(
         projectPath = project.basePath,
         onBuilding = { building = it },
         onProblems = { buildProblems = it },
         onShowProblems = { problemsVisible = true },
-        onShowRun = { runPanelVisible = true }
+        onShowRun = { runPanelVisible = true },
+        gradleTask = gradleTask
       )
+    }
+
+    fun runModuleTests() {
+      val ed = activeEditor
+      val mod = ed?.let { gradleModel?.moduleForFile(File(it.file.path)) }
+      val task = when {
+        mod == null || mod.path == ":" -> "test"
+        else -> "${mod.path}:test"
+      }
+      NotificationService.info("Tests", task)
+      runTests(task)
     }
 
     fun runConfiguration(config: RunConfiguration, debug: Boolean = false) {
