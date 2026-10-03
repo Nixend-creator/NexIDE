@@ -7,79 +7,45 @@ It aims to provide a powerful editing experience with PSI, plugin system, debugg
 
 ## Status
 
-🚧 Early development (v0.1.0-SNAPSHOT)
+🚧 **v0.2.0-SNAPSHOT** — usable MVP desktop IDE (text-heuristic analysis, not a full compiler front-end)
 
-Current capabilities:
-- Project skeleton & multi-module architecture
-- Basic Application / Project model
-- Compose Desktop UI bootstrap
-- Virtual File System (LocalFileSystem + VirtualFile)
-- Basic Editor (Document + Editor + Compose EditorView)
-- PSI foundation (PsiElement, PsiFile, PsiManager, plain-text fallback)
-- Plugin system (Extension Points + PluginManager)
-- Project View (file tree based on VFS)
-- File save from Editor (Ctrl/Cmd+S + button)
-- Editor tabs (multiple open files)
-- Line numbers in editor
-- Undo / Redo (Ctrl+Z / Ctrl+Y)
-- Language support (FileType EP + LanguageParser EP + PSI)
-- Basic syntax highlighting (Kotlin / Java keywords, strings, comments)
-- Find in file (Ctrl/Cmd+F)
-- Project View expand/collapse
-- Go to Line (Ctrl/Cmd+G)
-- Replace / Replace All (Ctrl/Cmd+R)
-- Cursor line/column in status bar
-- Confirm on close unsaved tab
-- File menu: Open Project, Save, Exit (Ctrl+O / Ctrl+S)
-- Run: Gradle build/test/tasks + output panel + Stop
-- Terminal (commands in project dir, cd, history)
-- Find in Files (Ctrl/Cmd+Shift+F)
-- Git status badges in Project View (M/A/?/D + refresh)
-- Git tool window: stage / unstage / commit / diff / push / pull
-- Recent projects (File → Open Recent)
-- Structure view (classes / functions / properties)
-- Breadcrumbs (path + structure under editor)
-- Welcome screen with recent projects
-- Settings (font size, tab size, line numbers)
-- Tab / Shift+Tab indent with configured tab size
-- Breakpoints (gutter toggle + tool window)
-- Debug session (JDWP launch, Debug tool window)
-- JDI attach / Install BPs / Resume on breakpoint
+### Editor & UX
+- Multi-tab editor, pin tabs, split view, soft wrap, zoom
+- Syntax highlight (Kotlin/Java), brace match, auto-pair
+- Line ops: comment, duplicate, move, delete, join, case
+- Find / Replace, Find in Files, Go to Line
+- Command Palette, Search Everywhere, Recent Files
+- Bookmarks (F11), status bar (Ln/Col, git branch, problem count)
+
+### Project & VFS
+- Open project, recent projects, session restore (tabs/theme/split)
+- Project View + Structure + breadcrumbs
+- Symbol index (single-file reindex on Save, full refresh after Build)
+
+### Build / Run / Debug
+- Gradle build & **test** (failures → Problems)
 - Run Configurations (Gradle / Application)
-- Problems panel (build errors, click to navigate)
-- Code completion (Ctrl+Space: keywords + file symbols)
-- Save All + IDE shortcuts (Build, Run, Debug, Settings)
-- Go to Declaration / Find Usages (Ctrl+B, Alt+F7)
-- Debug auto-attach + jump to source on breakpoint
-- Rename refactoring (Shift+F6, project-wide text)
-- Code formatter (Ctrl+Alt+L, brace-based indent)
-- Git diff gutter (green = added, blue = modified)
-- Comment / uncomment lines (Ctrl+/)
-- Duplicate line (Ctrl+D)
-- Move line up/down (Alt+Shift+↑/↓)
-- Close tab / other / all (Ctrl+W, Ctrl+Shift+W)
-- Soft wrap (View menu / Settings)
-- Delete line (Ctrl+Shift+K)
-- Status bar: git branch
-- Join lines (Ctrl+Shift+J)
-- Upper/Lower case (Ctrl+Shift+U / Ctrl+Shift+L)
+- **Gradle runtime classpath** (cached, multi-module merge)
+- Debug: JDWP, breakpoints, variables, watches, evaluate, jump to source
 
+### Git
+- Status badges, stage/commit, push/pull
+- Diff gutter + **side-by-side / unified** diff
 
-### Recent (steps 1–13 roadmap MVP)
-- Project symbol index for completion / resolve
-- Inline error markers in gutter from Problems
-- Session restore (tabs, theme, split)
-- Notifications toast host
-- Local history on save + restore
-- Split editor, dark/light theme
-- Plugin marketplace stub (~/.nexide/plugins)
-- Debugger watches evaluation
-- ide-web/ scaffold for future web target
-- Single-file symbol reindex on Save
-- Debug Evaluate expression
-- Pin editor tabs
-- Live syntax checks (unmatched braces / unclosed strings)
-- IdeActionCatalog + IdeKeyShortcuts
+### Analysis & refactor (lightweight)
+- Live diagnostics: braces/strings, unused import, missing import (index)
+- Problems panel = build + live (debounced)
+- Optimize Imports (Ctrl+Alt+O), Alt+Enter intentions (+ popup)
+- Rename (preview), Reformat, Local History timeline
+
+### Architecture (ide-app)
+- `IdeSessionServices`, `IdeTabService`, `IdeNavigationService`
+- `IdeKeyMap`, `IdeActionCatalog`, modular UI composables
+
+### Tests
+```bash
+./gradlew :platform:core:test :platform:editor:test
+```
 
 ## Run
 
@@ -107,11 +73,18 @@ export JAVA_HOME=...
 | Search Everywhere | Ctrl+N |
 | Find in Files | Ctrl+Shift+F |
 | Go to Declaration | Ctrl+B |
+| Find Usages | Alt+F7 |
 | Rename | Shift+F6 |
+| Reformat | Ctrl+Alt+L |
+| Optimize Imports | Ctrl+Alt+O |
+| Intention / quick-fix | Alt+Enter |
+| Next / Prev Problem | F2 / Shift+F2 |
 | Build | Ctrl+F9 |
 | Run / Debug | Shift+F10 / Shift+F9 |
 | Toggle Bookmark | F11 |
+| Next Bookmark | Shift+F11 |
 | Zoom | Ctrl+= / − / 0 |
+| Settings | Ctrl+Alt+S |
 
 
 ## Tech Stack
