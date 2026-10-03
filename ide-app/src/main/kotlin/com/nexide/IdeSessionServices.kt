@@ -86,7 +86,8 @@ class IdeSessionServices(
     onBuilding: (Boolean) -> Unit,
     onProblems: (List<Problem>) -> Unit,
     onShowProblems: () -> Unit,
-    gradleTask: String = "build"
+    gradleTask: String = "build",
+    onBuildFinished: () -> Unit = {}
   ) {
     val dir = File(projectPath)
     if (!GradleRunSupport.isGradleProject(dir)) {
@@ -115,6 +116,7 @@ class IdeSessionServices(
         else NotificationService.warn("Build", "${parsed.size} problem(s) — $taskLabel")
         reindexProjectAsync(projectPath)
         GradleClasspathResolver.invalidate(dir)
+        onBuildFinished()
       }
     }
     processRunner.addListener(listener)

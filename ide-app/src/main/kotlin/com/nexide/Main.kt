@@ -56,6 +56,7 @@ import com.nexide.platform.core.notify.NotificationService
 import com.nexide.platform.core.history.LocalHistory
 import com.nexide.platform.core.gradle.GradleProjectModel
 import com.nexide.platform.core.gradle.GradleProjectModelLoader
+import com.nexide.platform.core.gradle.GradleTaskNames
 import com.nexide.platform.core.run.GradleClasspathResolver
 import com.nexide.platform.ui.history.LocalHistoryDialog
 import com.nexide.platform.core.Project
@@ -256,17 +257,16 @@ fun main() {
         onBuilding = { building = it },
         onProblems = { buildProblems = it },
         onShowProblems = { problemsVisible = true },
-        gradleTask = gradleTask
+        gradleTask = gradleTask,
+        onBuildFinished = {
+          gradleModel = GradleProjectModelLoader.load(File(project.basePath))
+        }
       )
     }
 
     fun moduleGradleTask(suffix: String): String {
-      val ed = activeEditor
-      val mod = ed?.let { gradleModel?.moduleForFile(File(it.file.path)) }
-      return when {
-        mod == null || mod.path == ":" -> suffix
-        else -> "${mod.path}:$suffix"
-      }
+      val file = activeEditor?.let { File(it.file.path) }
+      return GradleTaskNames.forModule(gradleModel, file, suffix)
     }
 
     fun buildModule() {
