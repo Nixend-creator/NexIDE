@@ -124,7 +124,8 @@ class IdeSessionServices(
     onBuilding: (Boolean) -> Unit,
     onProblems: (List<Problem>) -> Unit,
     onShowProblems: () -> Unit,
-    onShowRun: () -> Unit
+    onShowRun: () -> Unit,
+    gradleTask: String = "test"
   ) {
     val dir = File(projectPath)
     if (!GradleRunSupport.isGradleProject(dir)) {
@@ -137,6 +138,7 @@ class IdeSessionServices(
     onShowProblems()
     onShowRun()
     val buffer = StringBuilder()
+    val taskLabel = gradleTask
     val listener = object : ProcessOutputListener {
       override fun onOutput(text: String) {
         buffer.append(text)
@@ -148,13 +150,14 @@ class IdeSessionServices(
         onProblems(parsed)
         onBuilding(false)
         val fails = parsed.count { it.severity == ProblemSeverity.ERROR }
-        Logger.info("Tests finished ($exitCode): $fails failure location(s)")
-        if (exitCode == 0) NotificationService.success("Tests passed")
-        else NotificationService.warn("Tests", "$fails failure(s) — click Problems to navigate")
+        Logger.info("Tests finished ($taskLabel, $exitCode): $fails failure location(s)")
+        if (exitCode == 0) NotificationService.success("Tests passed ($taskLabel)")
+        else NotificationService.warn("Tests", "$fails failure(s) — $taskLabel")
       }
     }
     processRunner.addListener(listener)
-    processRunner.start(gradle + "test", dir)
+    // gradle list is command + args
+    processRunner.start(gradle + taskLabel.split(" ").filter { it.isNotBlank() }, dir)
   }
 
   fun runConfiguration(

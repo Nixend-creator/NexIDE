@@ -618,6 +618,7 @@ fun main() {
           },
           build = { buildProject() },
           runTests = { runTests() },
+          runModuleTests = { runModuleTests() },
           reloadGradle = { reloadGradleProject() },
           showProblems = { problemsVisible = true },
           runSelected = { runConfigManager.selected?.let { runConfiguration(it, false) } },
