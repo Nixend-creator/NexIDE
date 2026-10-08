@@ -102,6 +102,7 @@ import com.nexide.platform.ui.settings.SettingsDialog
 import com.nexide.platform.ui.notify.NotificationHost
 import com.nexide.platform.ui.navigation.BookmarksDialog
 import com.nexide.platform.ui.navigation.CommandPalette
+import com.nexide.platform.ui.navigation.PaletteAction
 import com.nexide.platform.ui.navigation.RecentFilesDialog
 import com.nexide.platform.ui.navigation.SearchEverywhereDialog
 import com.nexide.platform.ui.plugins.MarketplaceDialog
@@ -688,7 +689,24 @@ fun main() {
           prevProblem = { goToProblem(false) },
           reloadGradle = { reloadGradleProject() }
         )
-        IdeActionCatalog.paletteActions(actionState, handlers)
+        val base = IdeActionCatalog.paletteActions(actionState, handlers)
+        val moduleActions = (gradleModel?.modules ?: emptyList())
+          .filter { it.path != ":" }
+          .map { mod ->
+            PaletteAction(
+              id = "module.${mod.path}",
+              title = "Go to Module ${mod.path}",
+              run = {
+                commandPaletteVisible = false
+                val abs = mod.dir.absolutePath
+                val ancestors = IdeNavigationService.ancestorPaths(abs, project.basePath)
+                projectExpandPaths = ancestors + abs
+                structureVisible = true
+                NotificationService.info("Module", mod.path)
+              }
+            )
+          }
+        base + moduleActions
       } else {
         emptyList()
       }
