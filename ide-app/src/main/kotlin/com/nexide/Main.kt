@@ -690,11 +690,11 @@ fun main() {
           reloadGradle = { reloadGradleProject() }
         )
         val base = IdeActionCatalog.paletteActions(actionState, handlers)
-        val moduleActions = (gradleModel?.modules ?: emptyList())
-          .filter { it.path != ":" }
-          .map { mod ->
+        val mods = (gradleModel?.modules ?: emptyList()).filter { it.path != ":" }
+        val moduleActions = mods.flatMap { mod ->
+          listOf(
             PaletteAction(
-              id = "module.${mod.path}",
+              id = "module.goto.${mod.path}",
               title = "Go to Module ${mod.path}",
               run = {
                 commandPaletteVisible = false
@@ -704,8 +704,43 @@ fun main() {
                 structureVisible = true
                 NotificationService.info("Module", mod.path)
               }
+            ),
+            PaletteAction(
+              id = "module.build.${mod.path}",
+              title = "Build Module ${mod.path}",
+              run = {
+                commandPaletteVisible = false
+                val task = com.nexide.platform.core.gradle.GradleTaskNames.forModulePath(mod.path, "build")
+                NotificationService.info("Build", task)
+                buildProject(task)
+              }
+            ),
+            PaletteAction(
+              id = "module.test.${mod.path}",
+              title = "Test Module ${mod.path}",
+              run = {
+                commandPaletteVisible = false
+                val task = com.nexide.platform.core.gradle.GradleTaskNames.forModulePath(mod.path, "test")
+                NotificationService.info("Tests", task)
+                runTests(task)
+              }
+            ),
+            PaletteAction(
+              id = "module.buildfile.${mod.path}",
+              title = "Open build.gradle ${mod.path}",
+              run = {
+                commandPaletteVisible = false
+                val buildFile = mod.findBuildFile()
+                if (buildFile != null) {
+                  val vf = LocalFileSystem.getInstance().findFileByPath(buildFile.absolutePath)
+                  if (vf != null) openFile(vf)
+                } else {
+                  NotificationService.warn("Module", "No build.gradle in ${mod.path}")
+                }
+              }
             )
-          }
+          )
+        }
         base + moduleActions
       } else {
         emptyList()
