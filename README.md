@@ -7,7 +7,7 @@ It aims to provide a powerful editing experience with PSI, plugin system, debugg
 
 ## Status
 
-🚧 **v0.2.0-SNAPSHOT** — usable MVP desktop IDE (text-heuristic analysis, not a full compiler front-end)
+🚧 **v0.2.1-SNAPSHOT** — usable MVP desktop IDE (text-heuristic analysis, not a full compiler front-end)
 
 ### Editor & UX
 - Multi-tab editor, pin tabs, split view, soft wrap, zoom
@@ -15,17 +15,24 @@ It aims to provide a powerful editing experience with PSI, plugin system, debugg
 - Line ops: comment, duplicate, move, delete, join, case
 - Find / Replace, Find in Files, Go to Line
 - Command Palette, Search Everywhere, Recent Files
-- Bookmarks (F11), status bar (Ln/Col, git branch, problem count)
+- Bookmarks (F11), status bar (Ln/Col, git branch, problem count, **module**)
+- Breadcrumbs with **Gradle module** prefix
 
 ### Project & VFS
 - Open project, recent projects, session restore (tabs/theme/split)
 - Project View + Structure + breadcrumbs
 - Symbol index (single-file reindex on Save, full refresh after Build)
 
+### Gradle multi-module
+- Lightweight model from `settings.gradle(.kts)` (`GradleProjectModel`)
+- Structure: Modules list, current module highlight, **Build / Test / build.gradle**
+- Palette: **Go to Module**, **Build/Test Module**, **Open build.gradle** (per module)
+- Menus: Build Module, Run Module Tests, Reload Gradle Project
+- Runtime classpath resolver (cached, multi-module merge)
+
 ### Build / Run / Debug
-- Gradle build & **test** (failures → Problems)
+- Gradle build & **test** (failures → Problems; module-scoped tasks)
 - Run Configurations (Gradle / Application)
-- **Gradle runtime classpath** (cached, multi-module merge)
 - Debug: JDWP, breakpoints, variables, watches, evaluate, jump to source
 
 ### Git
@@ -34,13 +41,13 @@ It aims to provide a powerful editing experience with PSI, plugin system, debugg
 
 ### Analysis & refactor (lightweight)
 - Live diagnostics: braces/strings, unused import, missing import (index)
-- Problems panel = build + live (debounced)
+- Problems panel = build + live (debounced), filter All / Errors / Warnings
 - Optimize Imports (Ctrl+Alt+O), Alt+Enter intentions (+ popup)
-- Rename (preview), Reformat, Local History timeline
+- Rename (preview, skips `//` comments), Reformat, Local History timeline
 
 ### Architecture (ide-app)
-- `IdeSessionServices`, `IdeTabService`, `IdeNavigationService`
-- `IdeKeyMap`, `IdeActionCatalog`, modular UI composables
+- `IdeSessionServices`, `IdeTabService`, `IdeNavigationService`, **`IdeModuleActions`**
+- `IdeDialogHost`, `IdeKeyMap`, `IdeActionCatalog`, modular UI composables
 
 ### Tests
 ```bash
@@ -79,12 +86,16 @@ export JAVA_HOME=...
 | Optimize Imports | Ctrl+Alt+O |
 | Intention / quick-fix | Alt+Enter |
 | Next / Prev Problem | F2 / Shift+F2 |
-| Build | Ctrl+F9 |
+| Build Project | Ctrl+F9 |
+| Build / Test Module | Build menu or Palette (`Build Module :…`) |
+| Reload Gradle Project | Build menu / Palette |
 | Run / Debug | Shift+F10 / Shift+F9 |
 | Toggle Bookmark | F11 |
 | Next Bookmark | Shift+F11 |
 | Zoom | Ctrl+= / − / 0 |
 | Settings | Ctrl+Alt+S |
+
+Palette also lists per-module actions: *Go to Module*, *Build Module*, *Test Module*, *Open build.gradle*.
 
 
 ## Tech Stack
