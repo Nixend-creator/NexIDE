@@ -265,10 +265,8 @@ fun main() {
       )
     }
 
-    fun moduleGradleTask(suffix: String): String {
-      val file = activeEditor?.let { File(it.file.path) }
-      return GradleTaskNames.forModule(gradleModel, file, suffix)
-    }
+    fun moduleGradleTask(suffix: String): String =
+      IdeModuleActions.taskForActiveFile(gradleModel, activeEditor?.file?.path, suffix)
 
     fun buildModule() {
       val task = moduleGradleTask("build")
@@ -690,57 +688,16 @@ fun main() {
           reloadGradle = { reloadGradleProject() }
         )
         val base = IdeActionCatalog.paletteActions(actionState, handlers)
-        val mods = (gradleModel?.modules ?: emptyList()).filter { it.path != ":" }
-        val moduleActions = mods.flatMap { mod ->
-          listOf(
-            PaletteAction(
-              id = "module.goto.${mod.path}",
-              title = "Go to Module ${mod.path}",
-              run = {
-                commandPaletteVisible = false
-                val abs = mod.dir.absolutePath
-                val ancestors = IdeNavigationService.ancestorPaths(abs, project.basePath)
-                projectExpandPaths = ancestors + abs
-                structureVisible = true
-                NotificationService.info("Module", mod.path)
-              }
-            ),
-            PaletteAction(
-              id = "module.build.${mod.path}",
-              title = "Build Module ${mod.path}",
-              run = {
-                commandPaletteVisible = false
-                val task = com.nexide.platform.core.gradle.GradleTaskNames.forModulePath(mod.path, "build")
-                NotificationService.info("Build", task)
-                buildProject(task)
-              }
-            ),
-            PaletteAction(
-              id = "module.test.${mod.path}",
-              title = "Test Module ${mod.path}",
-              run = {
-                commandPaletteVisible = false
-                val task = com.nexide.platform.core.gradle.GradleTaskNames.forModulePath(mod.path, "test")
-                NotificationService.info("Tests", task)
-                runTests(task)
-              }
-            ),
-            PaletteAction(
-              id = "module.buildfile.${mod.path}",
-              title = "Open build.gradle ${mod.path}",
-              run = {
-                commandPaletteVisible = false
-                val buildFile = mod.findBuildFile()
-                if (buildFile != null) {
-                  val vf = LocalFileSystem.getInstance().findFileByPath(buildFile.absolutePath)
-                  if (vf != null) openFile(vf)
-                } else {
-                  NotificationService.warn("Module", "No build.gradle in ${mod.path}")
-                }
-              }
-            )
-          )
-        }
+        val moduleActions = IdeModuleActions.paletteActions(
+          model = gradleModel,
+          projectBasePath = project.basePath,
+          onDismissPalette = { commandPaletteVisible = false },
+          onReveal = { projectExpandPaths = it },
+          onShowStructure = { structureVisible = true },
+          onBuildTask = { buildProject(it) },
+          onTestTask = { runTests(it) },
+          onOpenFile = { openFile(it) }
+        )
         base + moduleActions
       } else {
         emptyList()
@@ -825,8 +782,8 @@ fun main() {
           findInFilesVisible = findInFilesVisible,
           projectExpandPaths = projectExpandPaths,
           pinnedPaths = pinnedPaths,
-          moduleForPath = { path -> gradleModel?.moduleForFile(File(path))?.path },
-          gradleModules = gradleModel?.modules?.map { it.path } ?: emptyList()
+          moduleForPath = { path -> IdeModuleActions.moduleForPath(gradleModel, path) },
+          gradleModules = IdeModuleActions.modulePaths(gradleModel)
         ),
         callbacks = IdeUiCallbacks(
           onRunPanelVisibleChange = { runPanelVisible = it },
@@ -864,33 +821,24 @@ fun main() {
           },
           onRequestClose = { editor -> requestCloseEditor(editor) },
           onRevealModule = { absPath ->
-            val ancestors = IdeNavigationService.ancestorPaths(absPath, project.basePath)
-            projectExpandPaths = ancestors + absPath
+            projectExpandPaths = IdeModuleActions.revealPaths(File(absPath), project.basePath)
             NotificationService.info("Module", File(absPath).name)
           },
           onBuildModulePath = { modPath ->
-            val task = com.nexide.platform.core.gradle.GradleTaskNames.forModulePath(modPath, "build")
+            val task = IdeModuleActions.taskForModulePath(modPath, "build")
             NotificationService.info("Build", task)
             buildProject(task)
           },
           onTestModulePath = { modPath ->
-            val task = com.nexide.platform.core.gradle.GradleTaskNames.forModulePath(modPath, "test")
+            val task = IdeModuleActions.taskForModulePath(modPath, "test")
             NotificationService.info("Tests", task)
             runTests(task)
           },
           onOpenModuleBuildFile = { modPath ->
-            val rel = if (modPath == ":") "." else modPath.trimStart(':').replace(':', '/')
-            val dir = File(project.basePath, rel)
-            val buildFile = listOf("build.gradle.kts", "build.gradle")
-              .map { File(dir, it) }
-              .firstOrNull { it.isFile }
-            if (buildFile != null) {
-              val vf = LocalFileSystem.getInstance().findFileByPath(buildFile.absolutePath)
-              if (vf != null) openFile(vf)
-              else NotificationService.warn("Module", "Cannot open ${buildFile.name}")
-            } else {
-              NotificationService.warn("Module", "No build.gradle in $modPath")
-            }
+            val vf = IdeModuleActions.openBuildFileByPath(project.basePath, modPath)
+              ?: IdeModuleActions.openBuildFileByPath(gradleModel, modPath)
+            if (vf != null) openFile(vf)
+            else NotificationService.warn("Module", "No build.gradle in $modPath")
           },
           onTogglePin = { ed ->
             pinnedPaths = if (ed.file.path in pinnedPaths) pinnedPaths - ed.file.path
