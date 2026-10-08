@@ -83,5 +83,7 @@ data class IdeUiCallbacks(
   val onRequestClose: (Editor) -> Unit = {},
   val onCloseConfirm: (Editor, CloseConfirmResult) -> Unit = { _, _ -> },
   val onTogglePin: (Editor) -> Unit = {},
-  val onRevealModule: (String) -> Unit = {}
+  val onRevealModule: (String) -> Unit = {},
+  val onBuildModulePath: (String) -> Unit = {},
+  val onTestModulePath: (String) -> Unit = {}
 )

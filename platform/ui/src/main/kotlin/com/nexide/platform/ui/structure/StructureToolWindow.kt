@@ -54,7 +54,10 @@ fun StructureToolWindow(
   onClose: () -> Unit,
   onNavigate: (line: Int) -> Unit,
   modules: List<String> = emptyList(),
+  currentModule: String? = null,
   onModuleClick: (String) -> Unit = {},
+  onBuildModule: (String) -> Unit = {},
+  onTestModule: (String) -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   if (!visible) return
@@ -62,6 +65,9 @@ fun StructureToolWindow(
   val items = remember(text, language) {
     if (text == null || language == null) emptyList()
     else FileStructureExtractor.extract(text, language)
+  }
+  var selectedModule by remember(currentModule, modules) {
+    mutableStateOf(currentModule?.takeIf { it in modules } ?: modules.firstOrNull())
   }
 
   Column(
@@ -87,26 +93,6 @@ fun StructureToolWindow(
       }
     }
 
-    if (fileName == null || text == null) {
-      Text(
-        text = "No file open",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(12.dp)
-      )
-      return
-    }
-
-    if (items.isEmpty()) {
-      Text(
-        text = "No symbols found",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(12.dp)
-      )
-      return
-    }
-
     if (modules.isNotEmpty()) {
       Text(
         text = "Modules (${modules.size})",
@@ -117,20 +103,53 @@ fun StructureToolWindow(
       LazyColumn(
         modifier = Modifier
           .fillMaxWidth()
-          .weight(0.35f)
+          .weight(0.30f)
           .background(MaterialTheme.colorScheme.surface)
       ) {
         items(modules) { mod ->
+          val isCurrent = mod == currentModule
+          val isSelected = mod == selectedModule
           Text(
-            text = mod,
+            text = buildString {
+              if (isCurrent) append("● ")
+              append(mod)
+            },
             style = MaterialTheme.typography.bodySmall,
+            fontWeight = if (isCurrent || isSelected) FontWeight.SemiBold else FontWeight.Normal,
+            color = when {
+              isSelected -> MaterialTheme.colorScheme.primary
+              isCurrent -> MaterialTheme.colorScheme.tertiary
+              else -> MaterialTheme.colorScheme.onSurface
+            },
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
               .fillMaxWidth()
-              .clickable { onModuleClick(mod) }
+              .background(
+                if (isSelected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                else MaterialTheme.colorScheme.surface
+              )
+              .clickable {
+                selectedModule = mod
+                onModuleClick(mod)
+              }
               .padding(horizontal = 10.dp, vertical = 3.dp)
           )
+        }
+      }
+      selectedModule?.let { mod ->
+        Row(
+          modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 4.dp),
+          verticalAlignment = Alignment.CenterVertically
+        ) {
+          TextButton(onClick = { onBuildModule(mod) }) {
+            Text("Build", style = MaterialTheme.typography.labelSmall)
+          }
+          TextButton(onClick = { onTestModule(mod) }) {
+            Text("Test", style = MaterialTheme.typography.labelSmall)
+          }
         }
       }
       Text(
@@ -141,12 +160,36 @@ fun StructureToolWindow(
       )
     }
 
-    LazyColumn(modifier = Modifier.fillMaxSize()) {
+    when {
+      fileName == null || text == null -> {
+        Text(
+          text = "No file open",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier.padding(12.dp)
+        )
+      }
+      items.isEmpty() -> {
+        Text(
+          text = "No symbols found",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier.padding(12.dp)
+        )
+      }
+      else -> {
+    LazyColumn(
+      modifier = Modifier
+        .fillMaxSize()
+        .weight(1f)
+    ) {
       items(items, key = { "${it.kind}:${it.name}:${it.line}" }) { item ->
         StructureRow(item = item, onClick = { onNavigate(item.line) })
       }
     }
-  }
+      } // else symbols
+    } // when
+  } // Column
 }
 
 @Composable

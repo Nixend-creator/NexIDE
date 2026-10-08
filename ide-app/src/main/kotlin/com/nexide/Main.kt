@@ -950,12 +950,14 @@ fun NexIdeApp(
                 }
               },
               modules = state.gradleModules,
+              currentModule = editor?.file?.path?.let { state.moduleForPath(it) },
               onModuleClick = { modPath ->
-                // Expand module root in Project View via relative dir under project
                 val rel = modPath.trimStart(':').replace(':', '/')
                 val abs = File(project.basePath, rel).absolutePath
                 callbacks.onRevealModule(abs)
-              }
+              },
+              onBuildModule = { modPath -> callbacks.onBuildModulePath(modPath) },
+              onTestModule = { modPath -> callbacks.onTestModulePath(modPath) }
             )
           }
         }
