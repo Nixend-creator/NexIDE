@@ -957,7 +957,8 @@ fun NexIdeApp(
                 callbacks.onRevealModule(abs)
               },
               onBuildModule = { modPath -> callbacks.onBuildModulePath(modPath) },
-              onTestModule = { modPath -> callbacks.onTestModulePath(modPath) }
+              onTestModule = { modPath -> callbacks.onTestModulePath(modPath) },
+              onOpenModuleBuildFile = { modPath -> callbacks.onOpenModuleBuildFile(modPath) }
             )
           }
         }

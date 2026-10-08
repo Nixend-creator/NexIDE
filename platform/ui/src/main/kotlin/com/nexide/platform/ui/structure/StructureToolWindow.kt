@@ -58,6 +58,7 @@ fun StructureToolWindow(
   onModuleClick: (String) -> Unit = {},
   onBuildModule: (String) -> Unit = {},
   onTestModule: (String) -> Unit = {},
+  onOpenModuleBuildFile: (String) -> Unit = {},
   modifier: Modifier = Modifier
 ) {
   if (!visible) return
@@ -149,6 +150,9 @@ fun StructureToolWindow(
           }
           TextButton(onClick = { onTestModule(mod) }) {
             Text("Test", style = MaterialTheme.typography.labelSmall)
+          }
+          TextButton(onClick = { onOpenModuleBuildFile(mod) }) {
+            Text("build.gradle", style = MaterialTheme.typography.labelSmall)
           }
         }
       }

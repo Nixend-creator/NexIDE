@@ -24,6 +24,11 @@ data class GradleModule(
   val dir: File
 ) {
   val name: String get() = path.substringAfterLast(':').ifBlank { path }
+
+  fun findBuildFile(): File? =
+    listOf("build.gradle.kts", "build.gradle")
+      .map { File(dir, it) }
+      .firstOrNull { it.isFile }
 }
 
 data class GradleProjectModel(

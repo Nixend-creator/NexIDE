@@ -85,5 +85,6 @@ data class IdeUiCallbacks(
   val onTogglePin: (Editor) -> Unit = {},
   val onRevealModule: (String) -> Unit = {},
   val onBuildModulePath: (String) -> Unit = {},
-  val onTestModulePath: (String) -> Unit = {}
+  val onTestModulePath: (String) -> Unit = {},
+  val onOpenModuleBuildFile: (String) -> Unit = {}
 )
