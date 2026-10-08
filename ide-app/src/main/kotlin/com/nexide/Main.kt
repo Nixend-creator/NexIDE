@@ -815,6 +815,30 @@ fun main() {
             projectExpandPaths = ancestors + absPath
             NotificationService.info("Module", File(absPath).name)
           },
+          onBuildModulePath = { modPath ->
+            val task = com.nexide.platform.core.gradle.GradleTaskNames.forModulePath(modPath, "build")
+            NotificationService.info("Build", task)
+            buildProject(task)
+          },
+          onTestModulePath = { modPath ->
+            val task = com.nexide.platform.core.gradle.GradleTaskNames.forModulePath(modPath, "test")
+            NotificationService.info("Tests", task)
+            runTests(task)
+          },
+          onOpenModuleBuildFile = { modPath ->
+            val rel = if (modPath == ":") "." else modPath.trimStart(':').replace(':', '/')
+            val dir = File(project.basePath, rel)
+            val buildFile = listOf("build.gradle.kts", "build.gradle")
+              .map { File(dir, it) }
+              .firstOrNull { it.isFile }
+            if (buildFile != null) {
+              val vf = LocalFileSystem.getInstance().findFileByPath(buildFile.absolutePath)
+              if (vf != null) openFile(vf)
+              else NotificationService.warn("Module", "Cannot open ${buildFile.name}")
+            } else {
+              NotificationService.warn("Module", "No build.gradle in $modPath")
+            }
+          },
           onTogglePin = { ed ->
             pinnedPaths = if (ed.file.path in pinnedPaths) pinnedPaths - ed.file.path
             else pinnedPaths + ed.file.path
