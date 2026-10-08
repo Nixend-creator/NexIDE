@@ -791,6 +791,7 @@ fun EditorView(
 
     val caretLine = lineColAtOffset(text, textFieldValue.selection.start).first
     BreadcrumbsBar(
+      moduleLabel = moduleLabel,
       projectRootPath = projectRootPath,
       file = editor.file,
       documentText = text,

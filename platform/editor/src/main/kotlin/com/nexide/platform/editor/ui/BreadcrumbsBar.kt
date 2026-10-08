@@ -49,6 +49,7 @@ fun BreadcrumbsBar(
   language: String?,
   caretLine: Int,
   onNavigateToLine: (Int) -> Unit,
+  moduleLabel: String? = null,
   modifier: Modifier = Modifier
 ) {
   if (file == null) return
@@ -69,6 +70,23 @@ fun BreadcrumbsBar(
       .padding(horizontal = 10.dp, vertical = 4.dp),
     verticalAlignment = Alignment.CenterVertically
   ) {
+    moduleLabel?.takeIf { it.isNotBlank() && it != ":" }?.let { mod ->
+      Text(
+        text = mod,
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.primary,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = Modifier
+          .clickable { clipboard.setText(AnnotatedString(mod)) }
+          .padding(end = 2.dp)
+      )
+      Text(
+        text = " · ",
+        style = MaterialTheme.typography.labelSmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+      )
+    }
     segments.forEachIndexed { index, segment ->
       if (index > 0) {
         Text(
