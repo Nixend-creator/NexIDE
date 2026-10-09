@@ -633,20 +633,12 @@ fun main() {
         application.exit()
         exitApplication()
       },
-      title = buildString {
-        append("NexIDE — ${project.name}")
-        val mod = activeEditor?.file?.path?.let { IdeModuleActions.moduleForPath(gradleModel, it) }
-        if (!mod.isNullOrBlank() && mod != ":") {
-          append(" [")
-          append(mod)
-          append("]")
-        }
-        val dirty = openEditors.count { it.isModified }
-        when {
-          dirty == 1 && activeEditor?.isModified == true -> append(" •")
-          dirty > 0 -> append(" •$dirty")
-        }
-      },
+      title = IdeWindowTitle.format(
+        projectName = project.name,
+        modulePath = activeEditor?.file?.path?.let { IdeModuleActions.moduleForPath(gradleModel, it) },
+        dirtyCount = openEditors.count { it.isModified },
+        activeDirty = activeEditor?.isModified == true
+      ),
       state = windowState,
       onKeyEvent = { event ->
         IdeKeyMap.handle(
