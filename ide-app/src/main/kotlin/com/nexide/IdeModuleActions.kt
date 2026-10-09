@@ -77,6 +77,15 @@ object IdeModuleActions {
     return LocalFileSystem.getInstance().findFileByPath(buildFile.absolutePath)
   }
 
+  fun openSettingsGradle(projectBasePath: String): VirtualFile? {
+    val dir = File(projectBasePath)
+    val settings = listOf("settings.gradle.kts", "settings.gradle")
+      .map { File(dir, it) }
+      .firstOrNull { it.isFile }
+      ?: return null
+    return LocalFileSystem.getInstance().findFileByPath(settings.absolutePath)
+  }
+
   /**
    * Palette entries: Go to / Build / Test / Open build.gradle per non-root module.
    */
@@ -91,7 +100,7 @@ object IdeModuleActions {
     onOpenFile: (VirtualFile) -> Unit
   ): List<PaletteAction> {
     val mods = model?.modules?.filter { it.path != ":" } ?: return emptyList()
-    return mods.flatMap { mod ->
+    val perModule = mods.flatMap { mod ->
       listOf(
         PaletteAction(
           id = "module.goto.${mod.path}",
@@ -135,5 +144,16 @@ object IdeModuleActions {
         )
       )
     }
+    val settingsAction = PaletteAction(
+      id = "gradle.settings",
+      title = "Open settings.gradle",
+      run = {
+        onDismissPalette()
+        val vf = openSettingsGradle(projectBasePath)
+        if (vf != null) onOpenFile(vf)
+        else NotificationService.warn("Gradle", "No settings.gradle in project")
+      }
+    )
+    return perModule + settingsAction
   }
 }
