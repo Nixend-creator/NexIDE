@@ -645,6 +645,16 @@ fun main() {
           runModuleTests = { runModuleTests() },
           buildModule = { buildModule() },
           reloadGradle = { reloadGradleProject() },
+          openSettingsGradle = {
+            val vf = IdeModuleActions.openSettingsGradle(project.basePath)
+            if (vf != null) openFile(vf)
+            else NotificationService.warn("Gradle", "No settings.gradle")
+          },
+          openRootBuildGradle = {
+            val vf = IdeModuleActions.openRootBuildGradle(project.basePath)
+            if (vf != null) openFile(vf)
+            else NotificationService.warn("Gradle", "No root build.gradle")
+          },
           showProblems = { problemsVisible = true },
           runSelected = { runConfigManager.selected?.let { runConfiguration(it, false) } },
           debugSelected = { runConfigManager.selected?.let { runConfiguration(it, true) } },
@@ -685,7 +695,17 @@ fun main() {
           showLocalHistory = { localHistoryVisible = activeEditor != null },
           nextProblem = { goToProblem(true) },
           prevProblem = { goToProblem(false) },
-          reloadGradle = { reloadGradleProject() }
+          reloadGradle = { reloadGradleProject() },
+          openSettingsGradle = {
+            val vf = IdeModuleActions.openSettingsGradle(project.basePath)
+            if (vf != null) openFile(vf)
+            else NotificationService.warn("Gradle", "No settings.gradle")
+          },
+          openRootBuildGradle = {
+            val vf = IdeModuleActions.openRootBuildGradle(project.basePath)
+            if (vf != null) openFile(vf)
+            else NotificationService.warn("Gradle", "No root build.gradle")
+          }
         )
         val base = IdeActionCatalog.paletteActions(actionState, handlers)
         val moduleActions = IdeModuleActions.paletteActions(

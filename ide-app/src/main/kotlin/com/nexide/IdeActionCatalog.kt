@@ -77,7 +77,9 @@ class IdeActionHandlers(
   val showLocalHistory: () -> Unit,
   val nextProblem: () -> Unit,
   val prevProblem: () -> Unit,
-  val reloadGradle: () -> Unit
+  val reloadGradle: () -> Unit,
+  val openSettingsGradle: () -> Unit,
+  val openRootBuildGradle: () -> Unit
 )
 
 /**
@@ -140,7 +142,9 @@ object IdeActionCatalog {
       action("local.history", "Show Local History…", enabled = state.hasEditor, run = h.showLocalHistory),
       action("problem.next", "Next Problem", "F2", run = h.nextProblem),
       action("problem.prev", "Previous Problem", "Shift+F2", run = h.prevProblem),
-      action("gradle.reload", "Reload Gradle Project", run = h.reloadGradle)
+      action("gradle.reload", "Reload Gradle Project", run = h.reloadGradle),
+      action("gradle.settings", "Open settings.gradle", run = h.openSettingsGradle),
+      action("gradle.root.build", "Open root build.gradle", run = h.openRootBuildGradle)
     )
   }
 }
