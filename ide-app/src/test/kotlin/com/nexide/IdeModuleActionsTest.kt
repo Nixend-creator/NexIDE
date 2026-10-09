@@ -73,12 +73,11 @@ class IdeModuleActionsTest {
       onTestTask = {},
       onOpenFile = {}
     )
-    assertEquals(5, actions.size) // 4 per module + Open settings.gradle
+    assertEquals(4, actions.size) // Go / Build / Test / Open build.gradle
     assertTrue(actions.any { it.title.startsWith("Go to Module") })
     assertTrue(actions.any { it.title.startsWith("Build Module") })
     assertTrue(actions.any { it.title.startsWith("Test Module") })
     assertTrue(actions.any { it.title.startsWith("Open build.gradle") })
-    assertTrue(actions.any { it.title == "Open settings.gradle" })
   }
 
   @Test

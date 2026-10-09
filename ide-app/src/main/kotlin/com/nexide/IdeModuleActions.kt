@@ -153,16 +153,6 @@ object IdeModuleActions {
         )
       )
     }
-    val settingsAction = PaletteAction(
-      id = "gradle.settings",
-      title = "Open settings.gradle",
-      run = {
-        onDismissPalette()
-        val vf = openSettingsGradle(projectBasePath)
-        if (vf != null) onOpenFile(vf)
-        else NotificationService.warn("Gradle", "No settings.gradle in project")
-      }
-    )
-    return perModule + settingsAction
+    return perModule
   }
 }
