@@ -417,12 +417,18 @@ fun main() {
       val hits = files.any { f ->
         val n = f.name
         n == "settings.gradle" || n == "settings.gradle.kts" ||
+          n == "build.gradle" || n == "build.gradle.kts" ||
           n == "gradle.properties" ||
           (n == "libs.versions.toml" && f.parentFile?.name == "gradle")
       }
       if (!hits) return
-      gradleModel = GradleProjectModelLoader.load(File(project.basePath))
-      GradleClasspathResolver.invalidate(File(project.basePath))
+      val dir = File(project.basePath)
+      gradleModel = GradleProjectModelLoader.load(dir)
+      GradleClasspathResolver.invalidate(dir)
+      // build.gradle dependency changes often need a reindex of symbols too
+      if (files.any { it.name.startsWith("build.gradle") || it.name.startsWith("settings.gradle") }) {
+        reindexProject()
+      }
       val n = gradleModel?.modules?.size ?: 0
       NotificationService.info("Gradle", "Model refreshed after save ($n module(s))")
       Logger.info("Gradle model auto-reload after save")
