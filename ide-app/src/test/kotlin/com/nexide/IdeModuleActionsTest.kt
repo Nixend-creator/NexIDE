@@ -87,4 +87,18 @@ class IdeModuleActionsTest {
     val paths = IdeModuleActions.revealPaths(lib, root.absolutePath)
     assertTrue(paths.any { it == lib.absolutePath || it.endsWith("${File.separator}lib") })
   }
+
+  @Test
+  fun `detects gradle meta files for auto-reload`() {
+    val root = tempDir.toFile()
+    assertTrue(IdeModuleActions.isGradleMetaFile(File(root, "settings.gradle.kts")))
+    assertTrue(IdeModuleActions.isGradleMetaFile(File(root, "build.gradle")))
+    assertTrue(IdeModuleActions.isGradleMetaFile(File(root, "gradle.properties")))
+    val catalog = File(root, "gradle/libs.versions.toml")
+    catalog.parentFile.mkdirs()
+    assertTrue(IdeModuleActions.isGradleMetaFile(catalog))
+    assertFalse(IdeModuleActions.isGradleMetaFile(File(root, "src/Main.kt")))
+    assertTrue(IdeModuleActions.shouldReindexAfterGradleSave(File(root, "build.gradle.kts")))
+    assertFalse(IdeModuleActions.shouldReindexAfterGradleSave(File(root, "gradle.properties")))
+  }
 }

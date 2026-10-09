@@ -30,6 +30,24 @@ import java.io.File
  */
 object IdeModuleActions {
 
+  /** settings / build scripts / properties / version catalog — trigger model refresh on save. */
+  fun isGradleMetaFile(file: File): Boolean {
+    val n = file.name
+    return when {
+      n == "settings.gradle" || n == "settings.gradle.kts" -> true
+      n == "build.gradle" || n == "build.gradle.kts" -> true
+      n == "gradle.properties" -> true
+      n == "libs.versions.toml" && file.parentFile?.name == "gradle" -> true
+      else -> false
+    }
+  }
+
+  /** settings or build scripts also warrant symbol reindex. */
+  fun shouldReindexAfterGradleSave(file: File): Boolean {
+    val n = file.name
+    return n.startsWith("settings.gradle") || n.startsWith("build.gradle")
+  }
+
   fun modulePaths(model: GradleProjectModel?): List<String> =
     model?.modules?.map { it.path } ?: emptyList()
 
