@@ -339,6 +339,20 @@ fun main() {
       IdeTabService.closeAllEditors(openEditors, pinnedPaths) { doCloseEditor(it) }
     }
 
+
+    fun openGradleFile(kind: String) {
+      val vf = when (kind) {
+        "settings" -> IdeModuleActions.openSettingsGradle(project.basePath)
+        "rootBuild" -> IdeModuleActions.openRootBuildGradle(project.basePath)
+        else -> null
+      }
+      if (vf != null) openFile(vf)
+      else NotificationService.warn(
+        "Gradle",
+        if (kind == "settings") "No settings.gradle" else "No root build.gradle"
+      )
+    }
+
     fun reloadGradleProject() {
       val dir = File(project.basePath)
       gradleModel = GradleProjectModelLoader.load(dir)
@@ -645,16 +659,8 @@ fun main() {
           runModuleTests = { runModuleTests() },
           buildModule = { buildModule() },
           reloadGradle = { reloadGradleProject() },
-          openSettingsGradle = {
-            val vf = IdeModuleActions.openSettingsGradle(project.basePath)
-            if (vf != null) openFile(vf)
-            else NotificationService.warn("Gradle", "No settings.gradle")
-          },
-          openRootBuildGradle = {
-            val vf = IdeModuleActions.openRootBuildGradle(project.basePath)
-            if (vf != null) openFile(vf)
-            else NotificationService.warn("Gradle", "No root build.gradle")
-          },
+          openSettingsGradle = { openGradleFile("settings") },
+          openRootBuildGradle = { openGradleFile("rootBuild") },
           showProblems = { problemsVisible = true },
           runSelected = { runConfigManager.selected?.let { runConfiguration(it, false) } },
           debugSelected = { runConfigManager.selected?.let { runConfiguration(it, true) } },
@@ -696,16 +702,8 @@ fun main() {
           nextProblem = { goToProblem(true) },
           prevProblem = { goToProblem(false) },
           reloadGradle = { reloadGradleProject() },
-          openSettingsGradle = {
-            val vf = IdeModuleActions.openSettingsGradle(project.basePath)
-            if (vf != null) openFile(vf)
-            else NotificationService.warn("Gradle", "No settings.gradle")
-          },
-          openRootBuildGradle = {
-            val vf = IdeModuleActions.openRootBuildGradle(project.basePath)
-            if (vf != null) openFile(vf)
-            else NotificationService.warn("Gradle", "No root build.gradle")
-          }
+          openSettingsGradle = { openGradleFile("settings") },
+          openRootBuildGradle = { openGradleFile("rootBuild") }
         )
         val base = IdeActionCatalog.paletteActions(actionState, handlers)
         val moduleActions = IdeModuleActions.paletteActions(
