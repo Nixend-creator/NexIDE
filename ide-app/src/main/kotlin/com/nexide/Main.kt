@@ -649,7 +649,11 @@ fun main() {
           append(mod)
           append("]")
         }
-        if (activeEditor?.isModified == true) append(" •")
+        val dirty = openEditors.count { it.isModified }
+        when {
+          dirty == 1 && activeEditor?.isModified == true -> append(" •")
+          dirty > 0 -> append(" •$dirty")
+        }
       },
       state = windowState,
       onKeyEvent = { event ->
