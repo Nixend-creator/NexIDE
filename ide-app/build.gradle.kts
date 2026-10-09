@@ -19,6 +19,13 @@ dependencies {
   implementation(compose.desktop.currentOs)
   implementation(compose.material3)
   implementation(compose.components.resources)
+
+  testImplementation(libs.junit.jupiter)
+  testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.test {
+  useJUnitPlatform()
 }
 
 compose.desktop {
