@@ -86,6 +86,19 @@ object IdeModuleActions {
     return LocalFileSystem.getInstance().findFileByPath(build.absolutePath)
   }
 
+  fun openProjectFile(projectBasePath: String, relative: String): VirtualFile? {
+    val f = File(projectBasePath, relative)
+    if (!f.isFile) return null
+    return LocalFileSystem.getInstance().findFileByPath(f.absolutePath)
+  }
+
+  fun openGradleProperties(projectBasePath: String): VirtualFile? =
+    openProjectFile(projectBasePath, "gradle.properties")
+
+  fun openVersionCatalog(projectBasePath: String): VirtualFile? =
+    openProjectFile(projectBasePath, "gradle/libs.versions.toml")
+      ?: openProjectFile(projectBasePath, "gradle/libs.versions.toml".replace("/", File.separator))
+
   fun openSettingsGradle(projectBasePath: String): VirtualFile? {
     val dir = File(projectBasePath)
     val settings = listOf("settings.gradle.kts", "settings.gradle")

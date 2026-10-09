@@ -59,6 +59,8 @@ data class IdeMenuActions(
   val reloadGradle: () -> Unit,
   val openSettingsGradle: () -> Unit,
   val openRootBuildGradle: () -> Unit,
+  val openGradleProperties: () -> Unit,
+  val openVersionCatalog: () -> Unit,
   val showProblems: () -> Unit,
   val runSelected: () -> Unit,
   val debugSelected: () -> Unit,
@@ -151,6 +153,8 @@ fun FrameWindowScope.IdeMenuBar(
       Separator()
       Item("Open settings.gradle", onClick = actions.openSettingsGradle)
       Item("Open root build.gradle", onClick = actions.openRootBuildGradle)
+      Item("Open gradle.properties", onClick = actions.openGradleProperties)
+      Item("Open version catalog", onClick = actions.openVersionCatalog)
       Item("Show Problems", onClick = actions.showProblems)
     }
     Menu("Run", mnemonic = 'R') {

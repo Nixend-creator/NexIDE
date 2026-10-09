@@ -344,13 +344,21 @@ fun main() {
       val vf = when (kind) {
         "settings" -> IdeModuleActions.openSettingsGradle(project.basePath)
         "rootBuild" -> IdeModuleActions.openRootBuildGradle(project.basePath)
+        "properties" -> IdeModuleActions.openGradleProperties(project.basePath)
+        "catalog" -> IdeModuleActions.openVersionCatalog(project.basePath)
         else -> null
       }
       if (vf != null) openFile(vf)
-      else NotificationService.warn(
-        "Gradle",
-        if (kind == "settings") "No settings.gradle" else "No root build.gradle"
-      )
+      else {
+        val msg = when (kind) {
+          "settings" -> "No settings.gradle"
+          "rootBuild" -> "No root build.gradle"
+          "properties" -> "No gradle.properties"
+          "catalog" -> "No gradle/libs.versions.toml"
+          else -> "File not found"
+        }
+        NotificationService.warn("Gradle", msg)
+      }
     }
 
     fun reloadGradleProject() {
@@ -661,6 +669,8 @@ fun main() {
           reloadGradle = { reloadGradleProject() },
           openSettingsGradle = { openGradleFile("settings") },
           openRootBuildGradle = { openGradleFile("rootBuild") },
+          openGradleProperties = { openGradleFile("properties") },
+          openVersionCatalog = { openGradleFile("catalog") },
           showProblems = { problemsVisible = true },
           runSelected = { runConfigManager.selected?.let { runConfiguration(it, false) } },
           debugSelected = { runConfigManager.selected?.let { runConfiguration(it, true) } },
@@ -703,7 +713,9 @@ fun main() {
           prevProblem = { goToProblem(false) },
           reloadGradle = { reloadGradleProject() },
           openSettingsGradle = { openGradleFile("settings") },
-          openRootBuildGradle = { openGradleFile("rootBuild") }
+          openRootBuildGradle = { openGradleFile("rootBuild") },
+          openGradleProperties = { openGradleFile("properties") },
+          openVersionCatalog = { openGradleFile("catalog") }
         )
         val base = IdeActionCatalog.paletteActions(actionState, handlers)
         val moduleActions = IdeModuleActions.paletteActions(

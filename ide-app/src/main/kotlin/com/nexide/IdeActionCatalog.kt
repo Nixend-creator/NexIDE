@@ -79,7 +79,9 @@ class IdeActionHandlers(
   val prevProblem: () -> Unit,
   val reloadGradle: () -> Unit,
   val openSettingsGradle: () -> Unit,
-  val openRootBuildGradle: () -> Unit
+  val openRootBuildGradle: () -> Unit,
+  val openGradleProperties: () -> Unit,
+  val openVersionCatalog: () -> Unit
 )
 
 /**
@@ -144,7 +146,9 @@ object IdeActionCatalog {
       action("problem.prev", "Previous Problem", "Shift+F2", run = h.prevProblem),
       action("gradle.reload", "Reload Gradle Project", run = h.reloadGradle),
       action("gradle.settings", "Open settings.gradle", run = h.openSettingsGradle),
-      action("gradle.root.build", "Open root build.gradle", run = h.openRootBuildGradle)
+      action("gradle.root.build", "Open root build.gradle", run = h.openRootBuildGradle),
+      action("gradle.properties", "Open gradle.properties", run = h.openGradleProperties),
+      action("gradle.catalog", "Open version catalog", run = h.openVersionCatalog)
     )
   }
 }
