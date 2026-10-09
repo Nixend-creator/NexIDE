@@ -413,11 +413,28 @@ fun main() {
 
 
 
+    fun maybeReloadGradleAfterSave(files: List<File>) {
+      val hits = files.any { f ->
+        val n = f.name
+        n == "settings.gradle" || n == "settings.gradle.kts" ||
+          n == "gradle.properties" ||
+          (n == "libs.versions.toml" && f.parentFile?.name == "gradle")
+      }
+      if (!hits) return
+      gradleModel = GradleProjectModelLoader.load(File(project.basePath))
+      GradleClasspathResolver.invalidate(File(project.basePath))
+      val n = gradleModel?.modules?.size ?: 0
+      NotificationService.info("Gradle", "Model refreshed after save ($n module(s))")
+      Logger.info("Gradle model auto-reload after save")
+    }
+
     fun saveActive() {
       val ed = activeEditor
       val ok = ed?.save() == true
       if (ok && ed != null) {
-        reindexSavedFiles(listOf(File(ed.file.path)))
+        val saved = listOf(File(ed.file.path))
+        reindexSavedFiles(saved)
+        maybeReloadGradleAfterSave(saved)
         diagnosticsTick++
       }
     }
@@ -478,6 +495,7 @@ fun main() {
       }
       Logger.info("Save All: ${saved.size} file(s)")
       reindexSavedFiles(saved)
+      maybeReloadGradleAfterSave(saved)
     }
 
     fun navigateToTarget(target: NavigationTarget) {
