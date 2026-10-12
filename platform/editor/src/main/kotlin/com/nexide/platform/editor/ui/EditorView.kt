@@ -100,7 +100,9 @@ fun EditorView(
   settingsRevision: Int = 0,
   /** 1-based lines with build errors */
   problemLines: Set<Int> = emptySet(),
-  moduleLabel: String? = null
+  moduleLabel: String? = null,
+  /** Invoked when user clicks the Gradle module chip in the status bar. */
+  onModuleClick: ((String) -> Unit)? = null
 ) {
   var textFieldValue by remember(editor) {
     mutableStateOf(TextFieldValue(editor.document.getText()))
@@ -764,10 +766,6 @@ fun EditorView(
           append("  |  ")
           append("${problemLines.size} problem(s)")
         }
-        moduleLabel?.let {
-          append("  |  ")
-          append(it)
-        }
         statusMessage?.let {
           append("  |  ")
           append(it)
@@ -779,6 +777,16 @@ fun EditorView(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.weight(1f)
       )
+      moduleLabel?.takeIf { it.isNotBlank() && it != ":" }?.let { mod ->
+        Text(
+          text = "  |  $mod",
+          style = MaterialTheme.typography.labelMedium,
+          color = MaterialTheme.colorScheme.primary,
+          modifier = Modifier.clickable(enabled = onModuleClick != null) {
+            onModuleClick?.invoke(mod)
+          }
+        )
+      }
 
       if (editor.isModified) {
         TextButton(onClick = { performSave() }) {

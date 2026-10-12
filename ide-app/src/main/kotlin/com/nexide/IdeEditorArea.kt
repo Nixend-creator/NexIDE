@@ -41,6 +41,7 @@ fun IdeEditorArea(
   settingsRevision: Int,
   problems: List<Problem>,
   moduleForPath: (String) -> String? = { null },
+  onModuleClick: (String) -> Unit = {},
   pendingGoToLine: Pair<Editor, Int>?,
   onPendingGoToLineHandled: () -> Unit,
   onSelectEditor: (Editor) -> Unit,
@@ -77,8 +78,8 @@ fun IdeEditorArea(
           projectRootPath = projectPath,
           settingsRevision = settingsRevision,
           moduleLabel = moduleForPath(editor.file.path),
-          moduleLabel = moduleForPath(editor.file.path),
-        problemLines = problemLinesFor(editor)
+          onModuleClick = onModuleClick,
+          problemLines = problemLinesFor(editor)
         )
         VerticalDivider()
         EditorView(
@@ -87,6 +88,7 @@ fun IdeEditorArea(
           projectRootPath = projectPath,
           settingsRevision = settingsRevision,
           moduleLabel = moduleForPath(secondary.file.path),
+          onModuleClick = onModuleClick,
           problemLines = problemLinesFor(secondary)
         )
       }
@@ -100,6 +102,7 @@ fun IdeEditorArea(
         projectRootPath = projectPath,
         settingsRevision = settingsRevision,
         moduleLabel = moduleForPath(editor.file.path),
+        onModuleClick = onModuleClick,
         problemLines = problemLinesFor(editor)
       )
     } else {

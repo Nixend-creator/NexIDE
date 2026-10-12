@@ -1175,6 +1175,12 @@ fun NexIdeApp(
             settingsRevision = settingsRevision,
             problems = problemsForUi,
             moduleForPath = state.moduleForPath,
+            onModuleClick = { modPath ->
+              onStructureVisibleChange(true)
+              val rel = if (modPath == ":") "." else modPath.trimStart(':').replace(':', '/')
+              val abs = java.io.File(project.basePath, rel).absolutePath
+              callbacks.onRevealModule(abs)
+            },
             pendingGoToLine = pendingGoToLine,
             onPendingGoToLineHandled = onPendingGoToLineHandled,
             onSelectEditor = onSelectEditor,
