@@ -48,7 +48,8 @@ class IdeEscapeStack(
   val dismissRun: () -> Boolean,
   val dismissGit: () -> Boolean,
   val dismissTerminal: () -> Boolean,
-  val dismissStructure: () -> Boolean
+  val dismissStructure: () -> Boolean,
+  val dismissExitConfirm: () -> Boolean = { false }
 ) {
   fun tryDismiss(): Boolean =
     dismissCommandPalette() ||
@@ -69,7 +70,8 @@ class IdeEscapeStack(
       dismissRun() ||
       dismissGit() ||
       dismissTerminal() ||
-      dismissStructure()
+      dismissStructure() ||
+      dismissExitConfirm()
 }
 
 /**

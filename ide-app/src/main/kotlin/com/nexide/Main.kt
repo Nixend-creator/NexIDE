@@ -711,6 +711,9 @@ fun main() {
             },
             dismissStructure = {
               if (structureVisible) { structureVisible = false; true } else false
+            },
+            dismissExitConfirm = {
+              if (exitConfirmVisible) { exitConfirmVisible = false; true } else false
             }
           ),
           hasEditor = activeEditor != null,
