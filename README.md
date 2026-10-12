@@ -60,6 +60,9 @@ It aims to provide a powerful editing experience with PSI, plugin system, debugg
 ./gradlew :platform:core:test :platform:editor:test :ide-app:test
 ```
 
+### Engineering kit
+Standards, agent skills, and review checklist: [`docs/engineering-kit/`](docs/engineering-kit/) (see **`NEXIDE.md`** for project-specific mappings).
+
 ### Continuous Integration
 GitHub Actions (`.github/workflows/ci.yml`) runs on push/PR to `main`:
 - `compileKotlin` for all modules
