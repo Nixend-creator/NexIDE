@@ -370,8 +370,21 @@ fun main() {
       reindexProject()
       runConfigManager.clear()
       runConfigManager.ensureDefaults(dir)
+      // Refresh clean editors from disk (skip dirty to avoid losing local edits)
+      var reloaded = 0
+      openEditors.forEach { ed ->
+        if (!ed.isModified) {
+          try {
+            ed.reloadFromDisk()
+            reloaded++
+          } catch (e: Exception) {
+            Logger.warn("Reload failed for ${ed.file.path}: ${e.message}")
+          }
+        }
+      }
+      diagnosticsTick++
       val n = gradleModel?.modules?.size ?: 0
-      Logger.info("Gradle project reloaded: $n module(s)")
+      Logger.info("Gradle project reloaded: $n module(s), $reloaded editor(s) from disk")
       NotificationService.success("Gradle", "Reloaded — $n module(s)")
     }
 
