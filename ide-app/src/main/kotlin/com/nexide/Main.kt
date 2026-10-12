@@ -769,6 +769,101 @@ fun main() {
         )
       }
     ) {
+      val shellCallbacks = IdeShellCallbacks(
+        openProject = { chooseAndOpenProject() },
+        openRecent = { openProjectFromPath(it) },
+        clearRecent = {
+          RecentProjects.list().forEach { RecentProjects.remove(it) }
+        },
+        save = { saveActive() },
+        saveAll = { saveAll() },
+        closeTab = { activeEditor?.let { requestCloseEditor(it) } },
+        closeOtherTabs = { closeOtherTabs() },
+        closeAllTabs = { closeAllEditors() },
+        openSettings = { settingsVisible = true },
+        exit = { requestExit() },
+        gotoDeclaration = { gotoDeclaration() },
+        findUsages = { findUsages() },
+        recentFiles = { recentFilesVisible = true },
+        findAction = { commandPaletteVisible = true },
+        searchEverywhere = { searchEverywhereVisible = true },
+        copyAbsolutePath = { copyActivePath("absolute") },
+        copyRelativePath = { copyActivePath("relative") },
+        copyFileName = { copyActivePath("name") },
+        revealInProject = { revealInProjectView() },
+        toggleBookmark = { toggleBookmark() },
+        nextBookmark = { goToNextBookmark() },
+        showBookmarks = { bookmarksVisible = true },
+        reformat = {
+          val ed = activeEditor
+          if (ed != null) {
+            val indent = com.nexide.platform.core.settings.NexIdeSettings.tabSize
+            val formatted = com.nexide.platform.editor.format.CodeFormatter.format(
+              ed.document.getText(), indent
+            )
+            if (formatted != ed.document.getText()) ed.replaceText(formatted)
+          }
+        },
+        optimizeImports = { optimizeImportsActive() },
+        restoreLocalHistory = {
+          val ed = activeEditor
+          if (ed != null) {
+            val content = LocalHistory.contentAt(ed.file.path, 0)
+            if (content != null) {
+              ed.replaceText(content)
+              NotificationService.info("Local History", "Restored last snapshot")
+            } else {
+              NotificationService.warn("Local History", "No snapshots for this file")
+            }
+          }
+        },
+        showLocalHistory = { localHistoryVisible = activeEditor != null },
+        rename = { startRename() },
+        build = { buildProject() },
+        buildModule = { buildModule() },
+        runTests = { runTests() },
+        runModuleTests = { runModuleTests() },
+        reloadGradle = { reloadGradleProject() },
+        openSettingsGradle = { openGradleFile("settings") },
+        openRootBuildGradle = { openGradleFile("rootBuild") },
+        openGradleProperties = { openGradleFile("properties") },
+        openVersionCatalog = { openGradleFile("catalog") },
+        showProblems = { problemsVisible = true },
+        runSelected = { runConfigManager.selected?.let { runConfiguration(it, false) } },
+        debugSelected = { runConfigManager.selected?.let { runConfiguration(it, true) } },
+        editRunConfigs = { runConfigDialogVisible = true },
+        stop = { session.stopAll() },
+        showBreakpoints = { breakpointsVisible = true },
+        showDebug = { debugPanelVisible = true },
+        findInFiles = { findInFilesVisible = true },
+        showStructure = { structureVisible = true },
+        showGit = { gitPanelVisible = true },
+        showTerminal = { terminalVisible = true },
+        showRun = { runPanelVisible = true },
+        toggleSoftWrap = {
+          com.nexide.platform.core.settings.NexIdeSettings.softWrap =
+            !com.nexide.platform.core.settings.NexIdeSettings.softWrap
+          com.nexide.platform.core.settings.NexIdeSettings.save()
+          settingsRevision++
+        },
+        toggleTheme = {
+          darkTheme = !darkTheme
+          IdeStateStore.darkTheme = darkTheme
+          IdeStateStore.save()
+        },
+        toggleSplit = {
+          splitEditor = !splitEditor
+          IdeStateStore.splitEditor = splitEditor
+          IdeStateStore.save()
+        },
+        openPlugins = { marketplaceVisible = true },
+        zoomIn = { zoomEditor(1) },
+        zoomOut = { zoomEditor(-1) },
+        zoomReset = { resetEditorZoom() },
+        nextProblem = { goToProblem(true) },
+        prevProblem = { goToProblem(false) }
+      )
+
       IdeMenuBar(
         hasEditor = activeEditor != null,
         hasModified = openEditors.any { it.isModified },
@@ -778,98 +873,7 @@ fun main() {
         darkTheme = darkTheme,
         splitEditor = splitEditor,
         currentProjectPath = project.basePath,
-        actions = IdeMenuActions(
-          openProject = { chooseAndOpenProject() },
-          openRecent = { openProjectFromPath(it) },
-          clearRecent = {
-            RecentProjects.list().forEach { RecentProjects.remove(it) }
-          },
-          save = { saveActive() },
-          saveAll = { saveAll() },
-          closeTab = { activeEditor?.let { requestCloseEditor(it) } },
-          closeOtherTabs = { closeOtherTabs() },
-          closeAllTabs = { closeAllEditors() },
-          openSettings = { settingsVisible = true },
-          exit = { requestExit() },
-          gotoDeclaration = { gotoDeclaration() },
-          findUsages = { findUsages() },
-          recentFiles = { recentFilesVisible = true },
-          findAction = { commandPaletteVisible = true },
-          searchEverywhere = { searchEverywhereVisible = true },
-          copyAbsolutePath = { copyActivePath("absolute") },
-          copyRelativePath = { copyActivePath("relative") },
-          copyFileName = { copyActivePath("name") },
-          revealInProject = { revealInProjectView() },
-          toggleBookmark = { toggleBookmark() },
-          nextBookmark = { goToNextBookmark() },
-          showBookmarks = { bookmarksVisible = true },
-          reformat = {
-            val ed = activeEditor
-            if (ed != null) {
-              val indent = com.nexide.platform.core.settings.NexIdeSettings.tabSize
-              val formatted = com.nexide.platform.editor.format.CodeFormatter.format(
-                ed.document.getText(), indent
-              )
-              if (formatted != ed.document.getText()) ed.replaceText(formatted)
-            }
-          },
-          optimizeImports = { optimizeImportsActive() },
-          restoreLocalHistory = {
-            val ed = activeEditor
-            if (ed != null) {
-              val content = LocalHistory.contentAt(ed.file.path, 0)
-              if (content != null) {
-                ed.replaceText(content)
-                NotificationService.info("Local History", "Restored last snapshot")
-              } else {
-                NotificationService.warn("Local History", "No snapshots for this file")
-              }
-            }
-          },
-          showLocalHistory = { localHistoryVisible = activeEditor != null },
-          rename = { startRename() },
-          build = { buildProject() },
-          buildModule = { buildModule() },
-          runTests = { runTests() },
-          runModuleTests = { runModuleTests() },
-          reloadGradle = { reloadGradleProject() },
-          openSettingsGradle = { openGradleFile("settings") },
-          openRootBuildGradle = { openGradleFile("rootBuild") },
-          openGradleProperties = { openGradleFile("properties") },
-          openVersionCatalog = { openGradleFile("catalog") },
-          showProblems = { problemsVisible = true },
-          runSelected = { runConfigManager.selected?.let { runConfiguration(it, false) } },
-          debugSelected = { runConfigManager.selected?.let { runConfiguration(it, true) } },
-          editRunConfigs = { runConfigDialogVisible = true },
-          stop = { session.stopAll() },
-          showBreakpoints = { breakpointsVisible = true },
-          showDebug = { debugPanelVisible = true },
-          findInFiles = { findInFilesVisible = true },
-          showStructure = { structureVisible = true },
-          showGit = { gitPanelVisible = true },
-          showTerminal = { terminalVisible = true },
-          showRun = { runPanelVisible = true },
-          toggleSoftWrap = {
-            com.nexide.platform.core.settings.NexIdeSettings.softWrap =
-              !com.nexide.platform.core.settings.NexIdeSettings.softWrap
-            com.nexide.platform.core.settings.NexIdeSettings.save()
-            settingsRevision++
-          },
-          toggleDarkTheme = {
-            darkTheme = !darkTheme
-            IdeStateStore.darkTheme = darkTheme
-            IdeStateStore.save()
-          },
-          toggleSplit = {
-            splitEditor = !splitEditor
-            IdeStateStore.splitEditor = splitEditor
-            IdeStateStore.save()
-          },
-          openPlugins = { marketplaceVisible = true },
-          zoomIn = { zoomEditor(1) },
-          zoomOut = { zoomEditor(-1) },
-          zoomReset = { resetEditorZoom() }
-        )
+        actions = IdeShellActions.toMenuActions(shellCallbacks)
       )
 
       val paletteActions = if (commandPaletteVisible) {
@@ -879,80 +883,7 @@ fun main() {
           hasTabs = openEditors.isNotEmpty(),
           hasRunConfig = runConfigManager.selected != null
         )
-        val handlers = IdeActionHandlers(
-          openProject = { chooseAndOpenProject() },
-          save = { saveActive() },
-          saveAll = { saveAll() },
-          closeTab = { activeEditor?.let { requestCloseEditor(it) } },
-          closeAllTabs = { closeAllEditors() },
-          recentFiles = { recentFilesVisible = true },
-          searchEverywhere = { searchEverywhereVisible = true },
-          findAction = { commandPaletteVisible = true },
-          findInFiles = { findInFilesVisible = true },
-          gotoDeclaration = { gotoDeclaration() },
-          findUsages = { findUsages() },
-          rename = { startRename() },
-          optimizeImports = { optimizeImportsActive() },
-          reformat = {
-            val ed = activeEditor
-            if (ed != null) {
-              val indent = com.nexide.platform.core.settings.NexIdeSettings.tabSize
-              val formatted = com.nexide.platform.editor.format.CodeFormatter.format(
-                ed.document.getText(), indent
-              )
-              if (formatted != ed.document.getText()) ed.replaceText(formatted)
-            }
-          },
-          build = { buildProject() },
-          buildModule = { buildModule() },
-          runTests = { runTests() },
-          runModuleTests = { runModuleTests() },
-          showProblems = { problemsVisible = true },
-          runSelected = { runConfigManager.selected?.let { runConfiguration(it, false) } },
-          debugSelected = { runConfigManager.selected?.let { runConfiguration(it, true) } },
-          stop = { session.stopAll() },
-          showGit = { gitPanelVisible = true },
-          showTerminal = { terminalVisible = true },
-          showStructure = { structureVisible = true },
-          showDebug = { debugPanelVisible = true },
-          showBreakpoints = { breakpointsVisible = true },
-          openSettings = { settingsVisible = true },
-          openPlugins = { marketplaceVisible = true },
-          toggleTheme = {
-            darkTheme = !darkTheme
-            IdeStateStore.darkTheme = darkTheme
-            IdeStateStore.save()
-          },
-          toggleSplit = {
-            splitEditor = !splitEditor
-            IdeStateStore.splitEditor = splitEditor
-            IdeStateStore.save()
-          },
-          toggleSoftWrap = {
-            com.nexide.platform.core.settings.NexIdeSettings.softWrap =
-              !com.nexide.platform.core.settings.NexIdeSettings.softWrap
-            com.nexide.platform.core.settings.NexIdeSettings.save()
-            settingsRevision++
-          },
-          zoomIn = { zoomEditor(1) },
-          zoomOut = { zoomEditor(-1) },
-          zoomReset = { resetEditorZoom() },
-          copyAbsolutePath = { copyActivePath("absolute") },
-          copyRelativePath = { copyActivePath("relative") },
-          copyFileName = { copyActivePath("name") },
-          revealInProject = { revealInProjectView() },
-          toggleBookmark = { toggleBookmark() },
-          nextBookmark = { goToNextBookmark() },
-          showBookmarks = { bookmarksVisible = true },
-          showLocalHistory = { localHistoryVisible = activeEditor != null },
-          nextProblem = { goToProblem(true) },
-          prevProblem = { goToProblem(false) },
-          reloadGradle = { reloadGradleProject() },
-          openSettingsGradle = { openGradleFile("settings") },
-          openRootBuildGradle = { openGradleFile("rootBuild") },
-          openGradleProperties = { openGradleFile("properties") },
-          openVersionCatalog = { openGradleFile("catalog") }
-        )
+        val handlers = IdeShellActions.toPaletteHandlers(shellCallbacks)
         val base = IdeActionCatalog.paletteActions(actionState, handlers)
         base + IdeModuleActions.paletteActions(
           model = gradleModel,
