@@ -63,6 +63,7 @@ import com.nexide.platform.ui.history.LocalHistoryDialog
 import com.nexide.platform.core.Project
 import com.nexide.platform.core.Bookmarks
 import com.nexide.platform.core.RecentFiles
+import com.nexide.platform.core.NexIdeVersion
 import com.nexide.platform.core.RecentProjects
 import com.nexide.platform.core.build.DiagnosticsMerge
 import com.nexide.platform.core.build.LiveSyntaxChecker
@@ -116,7 +117,7 @@ import javax.swing.JFileChooser
 import javax.swing.UIManager
 
 fun main() {
-  Logger.info("Starting NexIDE...")
+  Logger.info("Starting ${NexIdeVersion.DISPLAY}...")
   val application = Application.create()
   application.start()
 
@@ -731,7 +732,7 @@ fun main() {
             },
             dismissExitConfirm = {
               if (aboutVisible) {
-        AboutDialog(version = "0.2.2", onDismiss = { aboutVisible = false })
+        AboutDialog(version = NexIdeVersion.VERSION, onDismiss = { aboutVisible = false })
       }
 
       if (exitConfirmVisible) { exitConfirmVisible = false; true } else false
@@ -907,7 +908,7 @@ fun main() {
       }
 
       if (aboutVisible) {
-        AboutDialog(version = "0.2.2", onDismiss = { aboutVisible = false })
+        AboutDialog(version = NexIdeVersion.VERSION, onDismiss = { aboutVisible = false })
       }
 
       if (exitConfirmVisible) {
