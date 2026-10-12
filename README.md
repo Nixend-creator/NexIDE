@@ -59,6 +59,9 @@ It aims to provide a powerful editing experience with PSI, plugin system, debugg
 ./gradlew :platform:core:test :platform:editor:test :ide-app:test
 ```
 
+### Publish to GitHub
+Checklist for creating the remote: [`docs/PUBLISH_GITHUB.md`](docs/PUBLISH_GITHUB.md).
+
 ### Engineering kit
 Standards, agent skills, and review checklist: [`docs/engineering-kit/`](docs/engineering-kit/) (see **`NEXIDE.md`** for project-specific mappings).
 

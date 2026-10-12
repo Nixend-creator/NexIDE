@@ -25,3 +25,9 @@ Thumbs.db
 # Local
 local.properties
 *.log
+
+# NexIDE local / agent
+.nexide/
+*.swp
+*~
+.workspace/
