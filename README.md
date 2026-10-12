@@ -2,7 +2,6 @@
 
 **Modern IDE inspired by IntelliJ IDEA**
 
-![CI](https://github.com/OWNER/NexIDE/actions/workflows/ci.yml/badge.svg)
 
 NexIDE is a full-featured desktop IDE built with Kotlin and Compose Multiplatform.
 It aims to provide a powerful editing experience with PSI, plugin system, debugger and more.
@@ -68,7 +67,10 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on push/PR to `main`:
 - `compileKotlin` for all modules
 - unit tests: `platform:core`, `platform:editor`, `ide-app`
 
-Replace `OWNER` in the README badge URL with your GitHub org/user.
+After publishing to GitHub, optional badge:
+```markdown
+![CI](https://github.com/<org>/NexIDE/actions/workflows/ci.yml/badge.svg)
+```
 
 ## Run
 

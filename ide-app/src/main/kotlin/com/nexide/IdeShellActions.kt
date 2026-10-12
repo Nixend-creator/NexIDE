@@ -192,6 +192,7 @@ object IdeShellActions {
     openSettingsGradle = c.openSettingsGradle,
     openRootBuildGradle = c.openRootBuildGradle,
     openGradleProperties = c.openGradleProperties,
-    openVersionCatalog = c.openVersionCatalog
+    openVersionCatalog = c.openVersionCatalog,
+    showAbout = c.showAbout
   )
 }
