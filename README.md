@@ -7,7 +7,7 @@ It aims to provide a powerful editing experience with PSI, plugin system, debugg
 
 ## Status
 
-🚧 **v0.2.1-SNAPSHOT** — usable MVP desktop IDE (text-heuristic analysis, not a full compiler front-end)
+🚧 **v0.2.2-SNAPSHOT** — usable MVP desktop IDE (text-heuristic analysis, not a full compiler front-end)
 
 ### Editor & UX
 - Multi-tab editor, pin tabs, split view, soft wrap, zoom
@@ -22,12 +22,16 @@ It aims to provide a powerful editing experience with PSI, plugin system, debugg
 - Open project, recent projects, session restore (tabs/theme/split)
 - Project View + Structure + breadcrumbs
 - Symbol index (single-file reindex on Save, full refresh after Build)
+- Window title: project + **[:module]** + dirty marker (`•` / `•N`)
+- **Confirm exit** on unsaved tabs (Settings → toggleable; Esc cancels)
 
 ### Gradle multi-module
 - Lightweight model from `settings.gradle(.kts)` (`GradleProjectModel`)
 - Structure: Modules list, current module highlight, **Build / Test / build.gradle**
 - Palette: **Go to Module**, **Build/Test Module**, **Open build.gradle** (per module)
 - Menus: Build Module, Run Module Tests, Reload Gradle Project
+- Open settings / root build / `gradle.properties` / version catalog
+- **Auto-reload** model after Save of settings/build/properties/catalog
 - Runtime classpath resolver (cached, multi-module merge)
 
 ### Build / Run / Debug
@@ -46,12 +50,12 @@ It aims to provide a powerful editing experience with PSI, plugin system, debugg
 - Rename (preview, skips `//` comments), Reformat, Local History timeline
 
 ### Architecture (ide-app)
-- `IdeSessionServices`, `IdeTabService`, `IdeNavigationService`, **`IdeModuleActions`**
+- `IdeSessionServices`, `IdeTabService`, `IdeNavigationService`, **`IdeModuleActions`**, **`IdeWindowTitle`**
 - `IdeDialogHost`, `IdeKeyMap`, `IdeActionCatalog`, modular UI composables
 
 ### Tests
 ```bash
-./gradlew :platform:core:test :platform:editor:test
+./gradlew :platform:core:test :platform:editor:test :ide-app:test
 ```
 
 ## Run

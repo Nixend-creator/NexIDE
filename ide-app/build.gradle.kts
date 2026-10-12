@@ -37,7 +37,7 @@ compose.desktop {
                     org.jetbrains.compose.desktop.application.dsl.TargetFormat.Msi,
                     org.jetbrains.compose.desktop.application.dsl.TargetFormat.Deb)
       packageName = "NexIDE"
-      packageVersion = "0.2.1"
+      packageVersion = "0.2.2"
       description = "NexIDE — modern IDE inspired by IntelliJ IDEA"
       copyright = "© 2026 NexIDE Contributors"
       vendor = "NexIDE"
