@@ -79,7 +79,8 @@ data class IdeMenuActions(
   val openPlugins: () -> Unit,
   val zoomIn: () -> Unit,
   val zoomOut: () -> Unit,
-  val zoomReset: () -> Unit
+  val zoomReset: () -> Unit,
+  val showAbout: () -> Unit
 )
 
 @Composable
@@ -192,6 +193,9 @@ fun FrameWindowScope.IdeMenuBar(
       Item("Reset Font Size", onClick = actions.zoomReset)
       Separator()
       Item("Plugins…", onClick = actions.openPlugins)
+    }
+    Menu("Help", mnemonic = 'H') {
+      Item("About NexIDE", onClick = actions.showAbout)
     }
   }
 }

@@ -77,7 +77,8 @@ data class IdeShellCallbacks(
   val zoomOut: () -> Unit,
   val zoomReset: () -> Unit,
   val nextProblem: () -> Unit,
-  val prevProblem: () -> Unit
+  val prevProblem: () -> Unit,
+  val showAbout: () -> Unit
 )
 
 object IdeShellActions {
@@ -137,7 +138,8 @@ object IdeShellActions {
     openPlugins = c.openPlugins,
     zoomIn = c.zoomIn,
     zoomOut = c.zoomOut,
-    zoomReset = c.zoomReset
+    zoomReset = c.zoomReset,
+    showAbout = c.showAbout
   )
 
   fun toPaletteHandlers(c: IdeShellCallbacks): IdeActionHandlers = IdeActionHandlers(

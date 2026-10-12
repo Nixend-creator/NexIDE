@@ -82,6 +82,7 @@ import com.nexide.platform.plugin.PluginManager
 import com.nexide.platform.plugin.example.CoreFileTypesPlugin
 import com.nexide.platform.plugin.example.FILE_TYPE_EP
 import com.nexide.platform.ui.dialog.CloseConfirmResult
+import com.nexide.platform.ui.dialog.AboutDialog
 import com.nexide.platform.ui.dialog.ConfirmCloseDialog
 import com.nexide.platform.plugin.filetype.FileTypeRegistry
 import com.nexide.platform.ui.projectview.ProjectView
@@ -180,6 +181,7 @@ fun main() {
     var intentionEditor by mutableStateOf<com.nexide.platform.editor.Editor?>(null)
     var localHistoryVisible by mutableStateOf(false)
     var exitConfirmVisible by mutableStateOf(false)
+    var aboutVisible by mutableStateOf(false)
     // When opening a search hit, request go-to-line after editor opens
     var pendingGoToLine by mutableStateOf<Pair<Editor, Int>?>(null)
 
@@ -728,7 +730,11 @@ fun main() {
               if (structureVisible) { structureVisible = false; true } else false
             },
             dismissExitConfirm = {
-              if (exitConfirmVisible) { exitConfirmVisible = false; true } else false
+              if (aboutVisible) {
+        AboutDialog(version = "0.2.2", onDismiss = { aboutVisible = false })
+      }
+
+      if (exitConfirmVisible) { exitConfirmVisible = false; true } else false
             }
           ),
           hasEditor = activeEditor != null,
@@ -861,7 +867,8 @@ fun main() {
         zoomOut = { zoomEditor(-1) },
         zoomReset = { resetEditorZoom() },
         nextProblem = { goToProblem(true) },
-        prevProblem = { goToProblem(false) }
+        prevProblem = { goToProblem(false) },
+        showAbout = { aboutVisible = true }
       )
 
       IdeMenuBar(
@@ -897,6 +904,10 @@ fun main() {
         )
       } else {
         emptyList()
+      }
+
+      if (aboutVisible) {
+        AboutDialog(version = "0.2.2", onDismiss = { aboutVisible = false })
       }
 
       if (exitConfirmVisible) {

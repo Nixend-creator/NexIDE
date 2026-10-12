@@ -81,7 +81,8 @@ class IdeActionHandlers(
   val openSettingsGradle: () -> Unit,
   val openRootBuildGradle: () -> Unit,
   val openGradleProperties: () -> Unit,
-  val openVersionCatalog: () -> Unit
+  val openVersionCatalog: () -> Unit,
+  val showAbout: () -> Unit = {}
 )
 
 /**
@@ -148,7 +149,8 @@ object IdeActionCatalog {
       action("gradle.settings", "Open settings.gradle", run = h.openSettingsGradle),
       action("gradle.root.build", "Open root build.gradle", run = h.openRootBuildGradle),
       action("gradle.properties", "Open gradle.properties", run = h.openGradleProperties),
-      action("gradle.catalog", "Open version catalog", run = h.openVersionCatalog)
+      action("gradle.catalog", "Open version catalog", run = h.openVersionCatalog),
+      action("help.about", "About NexIDE", run = h.showAbout)
     )
   }
 }
