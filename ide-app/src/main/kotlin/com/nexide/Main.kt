@@ -54,6 +54,7 @@ import com.nexide.platform.core.state.IdeStateStore
 import com.nexide.platform.core.index.SymbolIndex
 import com.nexide.platform.core.notify.NotificationService
 import com.nexide.platform.core.history.LocalHistory
+import com.nexide.platform.core.settings.NexIdeSettings
 import com.nexide.platform.core.gradle.GradleProjectModel
 import com.nexide.platform.core.gradle.GradleProjectModelLoader
 import com.nexide.platform.core.gradle.GradleTaskNames
@@ -492,7 +493,8 @@ fun main() {
     }
 
     fun requestExit() {
-      if (openEditors.any { it.isModified }) {
+      val dirty = openEditors.any { it.isModified }
+      if (dirty && NexIdeSettings.confirmExitOnUnsaved) {
         exitConfirmVisible = true
       } else {
         doExit()

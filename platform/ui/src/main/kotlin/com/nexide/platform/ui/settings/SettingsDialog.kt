@@ -51,6 +51,7 @@ fun SettingsDialog(
   var showLineNumbers by remember { mutableStateOf(NexIdeSettings.showLineNumbers) }
   var tabSize by remember { mutableStateOf(NexIdeSettings.tabSize) }
   var softWrap by remember { mutableStateOf(NexIdeSettings.softWrap) }
+  var confirmExit by remember { mutableStateOf(NexIdeSettings.confirmExitOnUnsaved) }
 
   Dialog(onDismissRequest = onDismiss) {
     Column(
@@ -148,6 +149,22 @@ fun SettingsDialog(
         )
       }
 
+      // Confirm exit
+      Row(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+      ) {
+        Text(
+          text = "Confirm exit if unsaved files",
+          style = MaterialTheme.typography.bodyMedium,
+          modifier = Modifier.weight(1f)
+        )
+        Checkbox(
+          checked = confirmExit,
+          onCheckedChange = { confirmExit = it }
+        )
+      }
+
       Row(
         modifier = Modifier
           .fillMaxWidth()
@@ -164,6 +181,7 @@ fun SettingsDialog(
             NexIdeSettings.showLineNumbers = showLineNumbers
             NexIdeSettings.tabSize = tabSize
             NexIdeSettings.softWrap = softWrap
+            NexIdeSettings.confirmExitOnUnsaved = confirmExit
             NexIdeSettings.save()
             onApplied()
             onDismiss()

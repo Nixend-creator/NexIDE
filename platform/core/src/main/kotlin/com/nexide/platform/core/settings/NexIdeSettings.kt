@@ -94,4 +94,15 @@ object NexIdeSettings {
       ensureLoaded()
       props.setProperty("editor.softWrap", value.toString())
     }
+
+  /** Ask before closing the IDE when there are modified editors. */
+  var confirmExitOnUnsaved: Boolean
+    get() {
+      ensureLoaded()
+      return props.getProperty("general.confirmExitOnUnsaved", "true").toBoolean()
+    }
+    set(value) {
+      ensureLoaded()
+      props.setProperty("general.confirmExitOnUnsaved", value.toString())
+    }
 }
