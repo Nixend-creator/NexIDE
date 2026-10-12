@@ -102,7 +102,9 @@ fun EditorView(
   problemLines: Set<Int> = emptySet(),
   moduleLabel: String? = null,
   /** Invoked when user clicks the Gradle module chip in the status bar. */
-  onModuleClick: ((String) -> Unit)? = null
+  onModuleClick: ((String) -> Unit)? = null,
+  /** Status bar problem count click. */
+  onProblemsClick: (() -> Unit)? = null
 ) {
   var textFieldValue by remember(editor) {
     mutableStateOf(TextFieldValue(editor.document.getText()))
@@ -762,10 +764,6 @@ fun EditorView(
           append("  |  ")
           append("git:$it")
         }
-        if (problemLines.isNotEmpty()) {
-          append("  |  ")
-          append("${problemLines.size} problem(s)")
-        }
         statusMessage?.let {
           append("  |  ")
           append(it)
@@ -777,6 +775,16 @@ fun EditorView(
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         modifier = Modifier.weight(1f)
       )
+      if (problemLines.isNotEmpty()) {
+        Text(
+          text = "  |  ${problemLines.size} problem(s)",
+          style = MaterialTheme.typography.labelMedium,
+          color = MaterialTheme.colorScheme.error,
+          modifier = Modifier.clickable(enabled = onProblemsClick != null) {
+            onProblemsClick?.invoke()
+          }
+        )
+      }
       moduleLabel?.takeIf { it.isNotBlank() && it != ":" }?.let { mod ->
         Text(
           text = "  |  $mod",

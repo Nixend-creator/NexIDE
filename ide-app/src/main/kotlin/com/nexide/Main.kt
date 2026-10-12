@@ -1181,6 +1181,9 @@ fun NexIdeApp(
               val abs = java.io.File(project.basePath, rel).absolutePath
               callbacks.onRevealModule(abs)
             },
+            onProblemsClick = {
+              onProblemsVisibleChange(true)
+            },
             pendingGoToLine = pendingGoToLine,
             onPendingGoToLineHandled = onPendingGoToLineHandled,
             onSelectEditor = onSelectEditor,
