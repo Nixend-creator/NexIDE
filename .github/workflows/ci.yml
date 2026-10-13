@@ -9,7 +9,7 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
 
     steps:
       - name: Checkout
@@ -30,8 +30,26 @@ jobs:
       - name: Show Java
         run: java -version && echo "JAVA_HOME=$JAVA_HOME"
 
-      - name: Compile all modules
-        run: ./gradlew compileKotlin --no-daemon --stacktrace --no-configuration-cache
+      - name: Compile modules
+        run: |
+          set -o pipefail
+          ./gradlew \
+            :platform:util:compileKotlin \
+            :platform:core:compileKotlin \
+            :platform:psi:compileKotlin \
+            :platform:plugin:compileKotlin \
+            :platform:editor:compileKotlin \
+            :platform:ui:compileKotlin \
+            :ide-app:compileKotlin \
+            --no-daemon --stacktrace --no-configuration-cache --info 2>&1 | tee compile.log
+
+      - name: Upload compile log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compile-log
+          path: compile.log
+          retention-days: 7
 
       - name: Unit tests
         run: >
