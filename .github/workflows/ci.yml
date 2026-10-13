@@ -27,8 +27,11 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x gradlew
 
+      - name: Show Java
+        run: java -version && echo "JAVA_HOME=$JAVA_HOME"
+
       - name: Compile all modules
-        run: ./gradlew compileKotlin --no-daemon --stacktrace
+        run: ./gradlew compileKotlin --no-daemon --stacktrace --no-configuration-cache
 
       - name: Unit tests
         run: >
@@ -38,6 +41,7 @@ jobs:
           :ide-app:test
           --no-daemon
           --stacktrace
+          --no-configuration-cache
 
       - name: Upload test reports
         if: failure()

@@ -1,5 +1,4 @@
 import org.gradle.api.plugins.JavaPluginExtension
-import org.gradle.jvm.toolchain.JavaLanguageVersion
 
 plugins {
   alias(libs.plugins.kotlin.jvm) apply false
@@ -16,10 +15,8 @@ subprojects {
   plugins.withId("org.jetbrains.kotlin.jvm") {
     apply(plugin = "java")
     extensions.configure<JavaPluginExtension> {
-      // Prefer toolchain so CI/local use a full JDK (ct.sym present)
-      toolchain {
-        languageVersion.set(JavaLanguageVersion.of(21))
-      }
+      sourceCompatibility = JavaVersion.VERSION_17
+      targetCompatibility = JavaVersion.VERSION_17
     }
   }
 
