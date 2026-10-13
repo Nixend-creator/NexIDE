@@ -109,7 +109,7 @@ fun EditorView(
   var textFieldValue by remember(editor) {
     mutableStateOf(TextFieldValue(editor.document.getText()))
   }
-  val text get() = textFieldValue.text
+  val text: String get() = textFieldValue.text
   var statusMessage by remember { mutableStateOf<String?>(null) }
   var modifiedTick by remember { mutableStateOf(0) }
 
