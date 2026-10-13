@@ -68,7 +68,7 @@ fun StructureToolWindow(
     else FileStructureExtractor.extract(text, language)
   }
   var selectedModule by remember(currentModule, modules) {
-    mutableStateOf(currentModule?.takeIf { it in modules } ?: modules.firstOrNull())
+    mutableStateOf<String?>(currentModule?.takeIf { it in modules } ?: modules.firstOrNull())
   }
 
   Column(
