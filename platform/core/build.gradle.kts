@@ -20,8 +20,5 @@ tasks.withType<JavaCompile>().configureEach {
   options.compilerArgs.addAll(listOf("--add-modules", "jdk.jdi"))
 }
 
-tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
-  compilerOptions {
-    freeCompilerArgs.add("-Xjdk-release=17")
-  }
-}
+// jvmTarget 17 is set in root build.gradle.kts — avoid -Xjdk-release
+// (breaks incomplete JDKs without ct.sym; CI/full JDKs already target 17 via jvmTarget)
